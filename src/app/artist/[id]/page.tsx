@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Artist, Track, TrackFormData } from "@/types";
-import { ArrowLeft, Loader2, Plus, Music, Mic2, Radio, FileText, Sparkles, Music as MusicIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Music, Mic2, Radio, FileText, Sparkles, Music as MusicIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,11 +25,15 @@ export default function ArtistPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState<TrackFormData>({
     title: "",
     artistId,
     albumArt: "",
+    audioUrl: "",
     vocals: 5,
     production: 5,
     lyrics: 5,
@@ -37,6 +41,22 @@ export default function ArtistPage() {
     vibe: 5,
     notes: "",
   });
+
+  // Check authentication
+  useEffect(() => {
+    const sessionData = localStorage.getItem("music_app_session");
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        const now = Date.now();
+        if (session.expiresAt && now < session.expiresAt) {
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    }
+  }, []);
 
   const fetchArtist = async () => {
     try {
@@ -56,11 +76,43 @@ export default function ArtistPage() {
   };
 
   useEffect(() => {
-    fetchArtist();
+    if (!isNaN(artistId)) {
+      fetchArtist();
+    }
   }, [artistId]);
+
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.includes('audio')) {
+        toast.error("Пожалуйста, выберите аудио файл");
+        return;
+      }
+      setAudioFile(file);
+      toast.success(`Файл "${file.name}" выбран`);
+    }
+  };
+
+  const uploadAudioFile = async (file: File): Promise<string> => {
+    // Create a data URL from the file for now
+    // In production, you would upload to a cloud storage service
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isAuthenticated) {
+      toast.error("Для добавления треков необходимо войти как администратор");
+      return;
+    }
     
     if (!formData.title.trim()) {
       toast.error("Введите название трека");
@@ -70,10 +122,22 @@ export default function ArtistPage() {
     setSubmitting(true);
     
     try {
+      let audioUrl = formData.audioUrl;
+      
+      // Upload audio file if selected
+      if (audioFile) {
+        setUploading(true);
+        audioUrl = await uploadAudioFile(audioFile);
+        setUploading(false);
+      }
+
       const response = await fetch("/api/tracks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          audioUrl
+        }),
       });
 
       if (!response.ok) {
@@ -86,6 +150,7 @@ export default function ArtistPage() {
         title: "",
         artistId,
         albumArt: "",
+        audioUrl: "",
         vocals: 5,
         production: 5,
         lyrics: 5,
@@ -93,11 +158,13 @@ export default function ArtistPage() {
         vibe: 5,
         notes: "",
       });
+      setAudioFile(null);
       fetchArtist();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ошибка");
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   };
 
@@ -171,9 +238,17 @@ export default function ArtistPage() {
               )}
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">
-                {artist.name}
-              </h1>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-3xl md:text-4xl font-bold gradient-text">
+                  {artist.name}
+                </h1>
+                {artist.verified === 1 && (
+                  <div className="relative w-8 h-8 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-md"></div>
+                    <Music className="w-6 h-6 text-primary relative z-10" title="Верифицирован" />
+                  </div>
+                )}
+              </div>
               <p className="text-muted-foreground">
                 {tracks.length} {tracks.length === 1 ? "трек" : "треков"}
               </p>
@@ -186,7 +261,7 @@ export default function ArtistPage() {
             )}
           </div>
 
-          {/* Radar Chart */}
+          {/* Radar Chart - Available for everyone */}
           {tracks.length > 0 && (
             <div className="glass-card rounded-lg p-4 mt-6">
               <h3 className="font-semibold mb-4 text-center">Средние оценки по категориям</h3>
@@ -217,105 +292,130 @@ export default function ArtistPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Add Track Form */}
-          <div className="glass-card rounded-xl p-6">
-            <h2 className="text-2xl font-semibold gradient-text mb-6 flex items-center gap-2">
-              <Plus className="w-6 h-6" />
-              Добавить трек
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">Название трека *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Введите название"
-                  className="glass-card border-border"
-                  required
-                />
-              </div>
+          {isAuthenticated && (
+            <div className="glass-card rounded-xl p-6">
+              <h2 className="text-2xl font-semibold gradient-text mb-6 flex items-center gap-2">
+                <Plus className="w-6 h-6" />
+                Добавить трек
+              </h2>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Название трека *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Введите название"
+                    className="glass-card border-border"
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="albumArt">URL обложки</Label>
-                <Input
-                  id="albumArt"
-                  value={formData.albumArt}
-                  onChange={(e) => setFormData({ ...formData, albumArt: e.target.value })}
-                  placeholder="https://..."
-                  className="glass-card border-border"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="albumArt">URL обложки</Label>
+                  <Input
+                    id="albumArt"
+                    value={formData.albumArt}
+                    onChange={(e) => setFormData({ ...formData, albumArt: e.target.value })}
+                    placeholder="https://..."
+                    className="glass-card border-border"
+                  />
+                </div>
 
-              <div className="space-y-4">
-                <h3 className="font-semibold">Оценки (0-10)</h3>
-                
-                <RatingSlider
-                  label="Вокал"
-                  value={formData.vocals}
-                  onChange={(value) => setFormData({ ...formData, vocals: value })}
-                  icon={<Mic2 className="w-4 h-4" />}
-                />
-                
-                <RatingSlider
-                  label="Продакшн"
-                  value={formData.production}
-                  onChange={(value) => setFormData({ ...formData, production: value })}
-                  icon={<Radio className="w-4 h-4" />}
-                />
-                
-                <RatingSlider
-                  label="Текст"
-                  value={formData.lyrics}
-                  onChange={(value) => setFormData({ ...formData, lyrics: value })}
-                  icon={<FileText className="w-4 h-4" />}
-                />
-                
-                <RatingSlider
-                  label="Оригинальность"
-                  value={formData.originality}
-                  onChange={(value) => setFormData({ ...formData, originality: value })}
-                  icon={<Sparkles className="w-4 h-4" />}
-                />
-                
-                <RatingSlider
-                  label="Вайб"
-                  value={formData.vibe}
-                  onChange={(value) => setFormData({ ...formData, vibe: value })}
-                  icon={<MusicIcon className="w-4 h-4" />}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="audioFile">Загрузить MP3-файл</Label>
+                  <div className="relative">
+                    <Input
+                      id="audioFile"
+                      type="file"
+                      accept="audio/mp3,audio/mpeg"
+                      onChange={handleAudioFileChange}
+                      className="glass-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
+                    />
+                    {audioFile && (
+                      <p className="text-xs text-primary mt-2 flex items-center gap-2">
+                        <Upload className="w-3 h-3" />
+                        {audioFile.name}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Выберите MP3-файл с вашего устройства</p>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">Заметки</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Дополнительные комментарии..."
-                  className="glass-card border-border min-h-[100px]"
-                />
-              </div>
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Оценки (0-10)</h3>
+                  
+                  <RatingSlider
+                    label="Вокал"
+                    value={formData.vocals}
+                    onChange={(value) => setFormData({ ...formData, vocals: value })}
+                    icon={<Mic2 className="w-4 h-4" />}
+                  />
+                  
+                  <RatingSlider
+                    label="Продакшн"
+                    value={formData.production}
+                    onChange={(value) => setFormData({ ...formData, production: value })}
+                    icon={<Radio className="w-4 h-4" />}
+                  />
+                  
+                  <RatingSlider
+                    label="Текст"
+                    value={formData.lyrics}
+                    onChange={(value) => setFormData({ ...formData, lyrics: value })}
+                    icon={<FileText className="w-4 h-4" />}
+                  />
+                  
+                  <RatingSlider
+                    label="Оригинальность"
+                    value={formData.originality}
+                    onChange={(value) => setFormData({ ...formData, originality: value })}
+                    icon={<Sparkles className="w-4 h-4" />}
+                  />
+                  
+                  <RatingSlider
+                    label="Вайб"
+                    value={formData.vibe}
+                    onChange={(value) => setFormData({ ...formData, vibe: value })}
+                    icon={<MusicIcon className="w-4 h-4" />}
+                  />
+                </div>
 
-              <Button 
-                type="submit" 
-                disabled={submitting} 
-                className="w-full bg-primary hover:bg-primary/90 glow-purple"
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить трек
-                  </>
-                )}
-              </Button>
-            </form>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Заметки</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder="Дополнительные комментарии..."
+                    className="glass-card border-border min-h-[100px]"
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={submitting || uploading} 
+                  className="w-full bg-primary hover:bg-primary/90 glow-purple"
+                >
+                  {submitting || uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      {uploading ? "Загрузка..." : "Добавление..."}
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Добавить трек
+                    </>
+                  )}
+                </Button>
+              </form>
+            </div>
+          )}
 
           {/* Tracks List */}
-          <div>
+          <div className={!isAuthenticated ? "lg:col-span-2" : ""}>
             <h2 className="text-2xl font-semibold gradient-text mb-6">
               Треки ({tracks.length})
             </h2>
@@ -325,7 +425,9 @@ export default function ArtistPage() {
                 <Music className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-xl font-semibold mb-2">Нет треков</h3>
                 <p className="text-muted-foreground">
-                  Добавьте первый трек для оценки
+                  {isAuthenticated 
+                    ? "Добавьте первый трек для оценки"
+                    : "У этого артиста пока нет треков"}
                 </p>
               </div>
             ) : (
@@ -336,6 +438,7 @@ export default function ArtistPage() {
                     track={track}
                     onDelete={fetchArtist}
                     onView={handleViewTrack}
+                    isAdmin={isAuthenticated}
                   />
                 ))}
               </div>

@@ -2,15 +2,68 @@
 
 import { useState, useEffect } from "react";
 import { Artist } from "@/types";
-import { Search, Loader2, Music2 } from "lucide-react";
+import { Search, Loader2, Music2, LogOut, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
 import ArtistCard from "@/components/ArtistCard";
+import LoginForm from "@/components/LoginForm";
+import { toast } from "sonner";
 
 export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<string>("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+
+  // Check authentication on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = () => {
+    const sessionData = localStorage.getItem("music_app_session");
+    
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        const now = Date.now();
+        
+        // Check if session is expired (1 hour)
+        if (session.expiresAt && now < session.expiresAt) {
+          setIsAuthenticated(true);
+          setCurrentUser(session.username);
+        } else {
+          // Session expired
+          localStorage.removeItem("music_app_session");
+          setIsAuthenticated(false);
+          toast.error("Сессия истекла. Пожалуйста, войдите снова.");
+        }
+      } catch (error) {
+        localStorage.removeItem("music_app_session");
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
+    
+    setCheckingAuth(false);
+  };
+
+  const handleLoginSuccess = () => {
+    checkAuth();
+    setShowLogin(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("music_app_session");
+    setIsAuthenticated(false);
+    setCurrentUser("");
+    toast.success("Вы вышли из системы");
+  };
 
   const fetchArtists = async () => {
     try {
@@ -38,20 +91,71 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Show loading spinner while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show login form if requested
+  if (showLogin) {
+    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <Music2 className="w-10 h-10 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-bold gradient-text">
-              Soundcore x pumkingott
-            </h1>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Music2 className="w-10 h-10 text-primary" />
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold gradient-text">
+                  Soundcore x pumkingott
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Event HOSPITAL TOURNAMENT
+                </p>
+              </div>
+            </div>
+            
+            {/* User Info & Auth Buttons */}
+            <div className="flex items-center gap-3">
+              {isAuthenticated ? (
+                <>
+                  <div className="glass-card px-4 py-2 rounded-lg">
+                    <p className="text-sm font-medium">{currentUser}</p>
+                    <p className="text-xs text-muted-foreground">Администратор</p>
+                  </div>
+                  <Button
+                    onClick={handleLogout}
+                    variant="outline"
+                    size="sm"
+                    className="glass-card border-border hover:border-primary/50"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Выход
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => setShowLogin(true)}
+                  className="bg-primary hover:bg-primary/90 glow-purple"
+                  size="sm"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Войти как админ
+                </Button>
+              )}
+            </div>
           </div>
-          <p className="text-muted-foreground">
-            Event HOSPITAL TOURNAMENT
-            | Developed by VENTO ANDA
+          
+          <p className="text-muted-foreground text-center">
+            Developed by VENTO ANDA
           </p>
         </div>
 
@@ -67,7 +171,7 @@ export default function Home() {
                 className="pl-10 glass-card border-border"
               />
             </div>
-            <AddArtistDialog onArtistAdded={fetchArtists} />
+            {isAuthenticated && <AddArtistDialog onArtistAdded={fetchArtists} />}
           </div>
         </div>
 
@@ -85,7 +189,7 @@ export default function Home() {
                 ? "Артисты не найдены. Попробуйте другой запрос."
                 : "Добавьте первого артиста, чтобы начать оценивать треки."}
             </p>
-            {!search && <AddArtistDialog onArtistAdded={fetchArtists} />}
+            {!search && isAuthenticated && <AddArtistDialog onArtistAdded={fetchArtists} />}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -94,6 +198,8 @@ export default function Home() {
                 key={artist.id}
                 artist={artist}
                 onDelete={fetchArtists}
+                onVerify={fetchArtists}
+                isAdmin={isAuthenticated}
               />
             ))}
           </div>
