@@ -120,6 +120,11 @@ export default function ArtistPage() {
       return;
     }
 
+    if (!audioFile && !formData.audioUrl) {
+      toast.error("Загрузите MP3-файл или укажите URL");
+      return;
+    }
+
     setSubmitting(true);
     
     try {
@@ -136,16 +141,36 @@ export default function ArtistPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
-          audioUrl
+          title: formData.title.trim(),
+          artistId,
+          albumArt: formData.albumArt || null,
+          audioUrl: audioUrl || null,
+          vocals: formData.vocals,
+          production: formData.production,
+          lyrics: formData.lyrics,
+          originality: formData.originality,
+          vibe: formData.vibe,
+          notes: formData.notes || null,
         }),
       });
 
+      // Better error handling
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Ошибка создания трека");
+        let errorMessage = "Ошибка создания трека";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If response is not JSON, try to get text
+          const errorText = await response.text();
+          console.error("Server error (non-JSON):", errorText);
+          errorMessage = `Ошибка сервера: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
+      const result = await response.json();
+      
       toast.success("Трек добавлен!");
       setFormData({
         title: "",
@@ -160,9 +185,15 @@ export default function ArtistPage() {
         notes: "",
       });
       setAudioFile(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById("audioFile") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      
       fetchArtist();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ошибка");
+      console.error("Error submitting track:", error);
+      toast.error(error instanceof Error ? error.message : "Ошибка добавления трека");
     } finally {
       setSubmitting(false);
       setUploading(false);
