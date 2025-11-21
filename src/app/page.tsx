@@ -180,7 +180,7 @@ export default function Home() {
                   size="sm"
                 >
                   <LogIn className="w-4 h-4 mr-2" />
-                  Войти как админ
+                  login
                 </Button>
               )}
             </div>
