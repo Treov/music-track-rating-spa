@@ -5,6 +5,7 @@ import { Music, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface ArtistCardProps {
   artist: Artist;
@@ -14,24 +15,32 @@ interface ArtistCardProps {
 }
 
 export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: ArtistCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     if (!confirm(`Удалить артиста ${artist.name}?`)) return;
 
-    try {
-      const response = await fetch(`/api/artists/${artist.id}`, {
-        method: "DELETE",
-      });
+    setIsDeleting(true);
+    
+    // Wait for animation before deleting
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/artists/${artist.id}`, {
+          method: "DELETE",
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Ошибка удаления");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Ошибка удаления");
+        }
+
+        toast.success("Артист удален");
+        onDelete();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Ошибка");
+        setIsDeleting(false);
       }
-
-      toast.success("Артист удален");
-      onDelete();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ошибка");
-    }
+    }, 300);
   };
 
   const handleVerify = async (e: React.MouseEvent) => {
@@ -56,8 +65,19 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
     }
   };
 
+  const getTracksText = (count: number) => {
+    if (count === 0) return "треков";
+    if (count === 1) return "трек";
+    if (count >= 2 && count <= 4) return "трека";
+    return "треков";
+  };
+
   return (
-    <div className="glass-card glass-card-hover rounded-xl p-6 relative group">
+    <div 
+      className={`glass-card glass-card-hover rounded-xl p-6 relative group transition-all duration-300 ${
+        isDeleting ? 'opacity-0 scale-95 -translate-y-4' : 'opacity-100 scale-100 translate-y-0'
+      }`}
+    >
       <Link href={`/artist/${artist.id}`} className="block">
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
@@ -82,7 +102,7 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
               )}
             </div>
             <p className="text-muted-foreground text-sm">
-              {artist.trackCount || 0} треков
+              {artist.trackCount || 0} {getTracksText(artist.trackCount || 0)}
             </p>
           </div>
         </div>
@@ -95,7 +115,7 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
             variant="ghost"
             size="icon"
             onClick={handleVerify}
-            className="hover:bg-primary/20 hover:text-primary"
+            className="hover:bg-primary/20 hover:text-primary transition-all duration-200"
             title={artist.verified === 1 ? "Снять верификацию" : "Верифицировать"}
           >
             <Music className={`h-4 w-4 ${artist.verified === 1 ? 'text-primary' : ''}`} />
@@ -104,7 +124,8 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
             variant="ghost"
             size="icon"
             onClick={handleDelete}
-            className="hover:bg-destructive/20 hover:text-destructive"
+            disabled={isDeleting}
+            className="hover:bg-destructive/20 hover:text-destructive transition-all duration-200"
             title="Удалить"
           >
             <Trash2 className="h-4 w-4" />

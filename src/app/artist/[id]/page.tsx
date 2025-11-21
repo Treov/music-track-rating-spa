@@ -28,6 +28,7 @@ export default function ArtistPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const [formData, setFormData] = useState<TrackFormData>({
     title: "",
@@ -173,6 +174,13 @@ export default function ArtistPage() {
     setDetailOpen(true);
   };
 
+  const handleBack = () => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      router.push("/");
+    }, 200);
+  };
+
   const calculateOverallRating = () => {
     if (tracks.length === 0) return 0;
     
@@ -201,6 +209,13 @@ export default function ArtistPage() {
     ];
   };
 
+  const getTracksText = (count: number) => {
+    if (count === 0) return "треков";
+    if (count === 1) return "трек";
+    if (count >= 2 && count <= 4) return "трека";
+    return "треков";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -212,13 +227,13 @@ export default function ArtistPage() {
   if (!artist) return null;
 
   return (
-    <div className="min-h-screen p-6 md:p-8">
+    <div className={`min-h-screen p-6 md:p-8 transition-all duration-300 ${isNavigating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <Button
           variant="ghost"
-          onClick={() => router.push("/")}
-          className="mb-6 glass-card"
+          onClick={handleBack}
+          className="mb-6 glass-card transition-all duration-200 hover:scale-105"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Назад
@@ -250,7 +265,7 @@ export default function ArtistPage() {
                 )}
               </div>
               <p className="text-muted-foreground">
-                {tracks.length} {tracks.length === 1 ? "трек" : "треков"}
+                {tracks.length} {getTracksText(tracks.length)}
               </p>
             </div>
             {tracks.length > 0 && (
@@ -325,21 +340,19 @@ export default function ArtistPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="audioFile">Загрузить MP3-файл</Label>
-                  <div className="relative">
-                    <Input
-                      id="audioFile"
-                      type="file"
-                      accept="audio/mp3,audio/mpeg"
-                      onChange={handleAudioFileChange}
-                      className="glass-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
-                    />
-                    {audioFile && (
-                      <p className="text-xs text-primary mt-2 flex items-center gap-2">
-                        <Upload className="w-3 h-3" />
-                        {audioFile.name}
-                      </p>
-                    )}
-                  </div>
+                  <Input
+                    id="audioFile"
+                    type="file"
+                    accept="audio/mp3,audio/mpeg"
+                    onChange={handleAudioFileChange}
+                    className="glass-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer cursor-pointer"
+                  />
+                  {audioFile && (
+                    <p className="text-xs text-primary mt-2 flex items-center gap-2">
+                      <Upload className="w-3 h-3" />
+                      {audioFile.name}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">Выберите MP3-файл с вашего устройства</p>
                 </div>
 

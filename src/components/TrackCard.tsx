@@ -4,32 +4,43 @@ import { Track } from "@/types";
 import { Music, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import CustomAudioPlayer from "@/components/CustomAudioPlayer";
+import { useState } from "react";
 
 interface TrackCardProps {
   track: Track;
   onDelete: () => void;
   onView: (track: Track) => void;
+  isAdmin: boolean;
 }
 
-export default function TrackCard({ track, onDelete, onView }: TrackCardProps) {
+export default function TrackCard({ track, onDelete, onView, isAdmin }: TrackCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     if (!confirm(`Удалить трек "${track.title}"?`)) return;
 
-    try {
-      const response = await fetch(`/api/tracks/${track.id}`, {
-        method: "DELETE",
-      });
+    setIsDeleting(true);
+    
+    // Wait for animation before deleting
+    setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/tracks/${track.id}`, {
+          method: "DELETE",
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Ошибка удаления");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Ошибка удаления");
+        }
+
+        toast.success("Трек удален");
+        onDelete();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Ошибка");
+        setIsDeleting(false);
       }
-
-      toast.success("Трек удален");
-      onDelete();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Ошибка");
-    }
+    }, 300);
   };
 
   const averageRating = (
@@ -37,8 +48,12 @@ export default function TrackCard({ track, onDelete, onView }: TrackCardProps) {
   ).toFixed(1);
 
   return (
-    <div className="glass-card glass-card-hover rounded-xl p-4 relative group">
-      <div className="flex items-start gap-4">
+    <div 
+      className={`glass-card glass-card-hover rounded-xl p-4 relative group transition-all duration-300 ${
+        isDeleting ? 'opacity-0 scale-95 translate-x-4' : 'opacity-100 scale-100 translate-x-0'
+      }`}
+    >
+      <div className="flex items-start gap-4 mb-3">
         <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
           {track.albumArt ? (
             <img
@@ -59,23 +74,33 @@ export default function TrackCard({ track, onDelete, onView }: TrackCardProps) {
           </div>
         </div>
       </div>
+      
+      {track.audioUrl && (
+        <div className="mt-3">
+          <CustomAudioPlayer src={track.audioUrl} title={track.title} />
+        </div>
+      )}
+      
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => onView(track)}
-          className="h-8 w-8 hover:bg-primary/20 hover:text-primary"
+          className="h-8 w-8 hover:bg-primary/20 hover:text-primary transition-all duration-200"
         >
           <Eye className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleDelete}
-          className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="h-8 w-8 hover:bg-destructive/20 hover:text-destructive transition-all duration-200"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<string>("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
@@ -55,7 +56,27 @@ export default function Home() {
 
   const handleLoginSuccess = () => {
     checkAuth();
-    setShowLogin(false);
+    setIsAnimating(true);
+    setTimeout(() => {
+      setShowLogin(false);
+      setIsAnimating(false);
+    }, 300);
+  };
+
+  const handleShowLogin = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setShowLogin(true);
+      setIsAnimating(false);
+    }, 100);
+  };
+
+  const handleBackFromLogin = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setShowLogin(false);
+      setIsAnimating(false);
+    }, 300);
   };
 
   const handleLogout = () => {
@@ -91,6 +112,13 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const getTracksText = (count: number) => {
+    if (count === 0) return "треков";
+    if (count === 1) return "трек";
+    if (count >= 2 && count <= 4) return "трека";
+    return "треков";
+  };
+
   // Show loading spinner while checking auth
   if (checkingAuth) {
     return (
@@ -102,11 +130,15 @@ export default function Home() {
 
   // Show login form if requested
   if (showLogin) {
-    return <LoginForm onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <div className={`transition-all duration-300 ${isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        <LoginForm onLoginSuccess={handleLoginSuccess} onBack={handleBackFromLogin} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen p-6 md:p-8">
+    <div className={`min-h-screen p-6 md:p-8 transition-all duration-300 ${isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -143,7 +175,7 @@ export default function Home() {
                 </>
               ) : (
                 <Button
-                  onClick={() => setShowLogin(true)}
+                  onClick={handleShowLogin}
                   className="bg-primary hover:bg-primary/90 glow-purple"
                   size="sm"
                 >

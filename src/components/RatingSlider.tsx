@@ -39,7 +39,7 @@ export default function RatingSlider({ label, value, onChange, icon }: RatingSli
       
       return () => clearInterval(interval);
     }
-  }, [value]);
+  }, [value, displayValue]);
 
   return (
     <div className="space-y-2">
@@ -52,9 +52,6 @@ export default function RatingSlider({ label, value, onChange, icon }: RatingSli
           className={`text-lg font-semibold text-primary transition-all duration-200 ${
             isAnimating ? 'scale-110' : 'scale-100'
           }`}
-          style={{
-            transform: isAnimating ? 'scale(1.1)' : 'scale(1)',
-          }}
         >
           {Math.round(displayValue)}
         </span>
@@ -65,13 +62,13 @@ export default function RatingSlider({ label, value, onChange, icon }: RatingSli
           onValueChange={(values) => onChange(values[0])}
           max={10}
           step={1}
-          className="w-full transition-all duration-300 ease-out"
+          className="w-full"
         />
         <div 
-          className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-300 ease-out"
+          className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-200 ease-out"
           style={{
             width: `${(value / 10) * 100}%`,
-            background: 'linear-gradient(90deg, rgba(147, 51, 234, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%)',
+            background: 'linear-gradient(90deg, rgba(147, 51, 234, 0.15) 0%, rgba(147, 51, 234, 0.05) 100%)',
             borderRadius: '9999px',
           }}
         />
