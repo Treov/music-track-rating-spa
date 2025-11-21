@@ -36,8 +36,15 @@ export default function AddArtistDialog({ onArtistAdded }: AddArtistDialogProps)
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Ошибка создания артиста");
+        let errorMessage = "Ошибка создания артиста";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // If response is not JSON, use default message
+          errorMessage = `Ошибка сервера: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success("Артист добавлен!");

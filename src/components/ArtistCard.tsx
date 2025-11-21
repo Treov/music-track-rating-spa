@@ -30,8 +30,14 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Ошибка удаления");
+          let errorMessage = "Ошибка удаления";
+          try {
+            const error = await response.json();
+            errorMessage = error.error || errorMessage;
+          } catch {
+            errorMessage = `Ошибка сервера: ${response.status}`;
+          }
+          throw new Error(errorMessage);
         }
 
         toast.success("Артист удален");
@@ -53,8 +59,14 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin }: Arti
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Ошибка верификации");
+        let errorMessage = "Ошибка верификации";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          errorMessage = `Ошибка сервера: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const updated = await response.json();

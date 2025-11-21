@@ -30,8 +30,14 @@ export default function TrackCard({ track, onDelete, onView, isAdmin }: TrackCar
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Ошибка удаления");
+          let errorMessage = "Ошибка удаления";
+          try {
+            const error = await response.json();
+            errorMessage = error.error || errorMessage;
+          } catch {
+            errorMessage = `Ошибка сервера: ${response.status}`;
+          }
+          throw new Error(errorMessage);
         }
 
         toast.success("Трек удален");
