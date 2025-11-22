@@ -6,6 +6,7 @@ import { Search, Loader2, Music2, LogOut, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
+import GlobalMusicSearch from "@/components/GlobalMusicSearch";
 import ArtistCard from "@/components/ArtistCard";
 import LoginForm from "@/components/LoginForm";
 import { toast } from "sonner";
@@ -203,9 +204,12 @@ export default function Home() {
                 className="pl-10 glass-card border-border"
               />
             </div>
-            {isAuthenticated && (
-              <AddArtistDialog onArtistAdded={fetchArtists} />
-            )}
+            <div className="flex gap-2">
+              <GlobalMusicSearch onTrackAdded={fetchArtists} />
+              {isAuthenticated && (
+                <AddArtistDialog onArtistAdded={fetchArtists} />
+              )}
+            </div>
           </div>
         </div>
 
