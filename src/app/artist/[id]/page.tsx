@@ -158,13 +158,19 @@ export default function ArtistPage() {
       if (!response.ok) {
         let errorMessage = "Ошибка создания трека";
         try {
+          // Clone response before reading to avoid "body stream already read" error
+          const clonedResponse = response.clone();
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          // If response is not JSON, try to get text
-          const errorText = await response.text();
-          console.error("Server error (non-JSON):", errorText);
-          errorMessage = `Ошибка сервера: ${response.status}`;
+          // If response is not JSON, read as text from clone
+          try {
+            const errorText = await response.text();
+            console.error("Server error (non-JSON):", errorText);
+            errorMessage = `Ошибка сервера: ${response.status}`;
+          } catch {
+            errorMessage = `Ошибка сервера: ${response.status}`;
+          }
         }
         throw new Error(errorMessage);
       }
@@ -369,22 +375,46 @@ export default function ArtistPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="audioFile">Загрузить MP3-файл</Label>
-                  <Input
-                    id="audioFile"
-                    type="file"
-                    accept="audio/mp3,audio/mpeg"
-                    onChange={handleAudioFileChange}
-                    className="glass-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer cursor-pointer"
-                  />
-                  {audioFile && (
-                    <p className="text-xs text-primary mt-2 flex items-center gap-2">
-                      <Upload className="w-3 h-3" />
-                      {audioFile.name}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">Выберите MP3-файл с вашего устройства</p>
+                <div className="space-y-4">
+                  <Label>Аудиофайл *</Label>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="audioUrl" className="text-sm font-normal">URL аудиофайла</Label>
+                    <Input
+                      id="audioUrl"
+                      value={formData.audioUrl}
+                      onChange={(e) => setFormData({ ...formData, audioUrl: e.target.value })}
+                      placeholder="https://example.com/audio.mp3"
+                      className="glass-card border-border"
+                      disabled={!!audioFile}
+                    />
+                    {audioFile && (
+                      <p className="text-xs text-muted-foreground">Отключено, так как выбран файл для загрузки</p>
+                    )}
+                  </div>
+
+                  <div className="text-center text-sm text-muted-foreground">— или —</div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="audioFile" className="text-sm font-normal">Загрузить MP3-файл</Label>
+                    <Input
+                      id="audioFile"
+                      type="file"
+                      accept="audio/mp3,audio/mpeg"
+                      onChange={handleAudioFileChange}
+                      className="glass-card border-border file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer cursor-pointer"
+                      disabled={!!formData.audioUrl}
+                    />
+                    {audioFile && (
+                      <p className="text-xs text-primary mt-2 flex items-center gap-2">
+                        <Upload className="w-3 h-3" />
+                        {audioFile.name}
+                      </p>
+                    )}
+                    {formData.audioUrl && (
+                      <p className="text-xs text-muted-foreground">Отключено, так как указан URL</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-4">
