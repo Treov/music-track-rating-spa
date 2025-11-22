@@ -206,9 +206,7 @@ export default function Home() {
             </div>
             <div className="flex gap-2">
               <GlobalMusicSearch onTrackAdded={fetchArtists} />
-              {isAuthenticated && (
-                <AddArtistDialog onArtistAdded={fetchArtists} />
-              )}
+              <AddArtistDialog onArtistAdded={fetchArtists} />
             </div>
           </div>
         </div>
@@ -227,7 +225,7 @@ export default function Home() {
                 ? "Артисты не найдены. Попробуйте другой запрос."
                 : "Добавьте первого артиста, чтобы начать оценивать треки."}
             </p>
-            {!search && isAuthenticated && <AddArtistDialog onArtistAdded={fetchArtists} />}
+            {!search && <AddArtistDialog onArtistAdded={fetchArtists} />}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
