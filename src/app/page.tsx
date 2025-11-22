@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
 import ArtistCard from "@/components/ArtistCard";
 import LoginForm from "@/components/LoginForm";
+import MusicPlatformSearch from "@/components/MusicPlatformSearch";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -203,7 +204,12 @@ export default function Home() {
                 className="pl-10 glass-card border-border"
               />
             </div>
-            {isAuthenticated && <AddArtistDialog onArtistAdded={fetchArtists} />}
+            {isAuthenticated && (
+              <div className="flex gap-2 w-full md:w-auto">
+                <AddArtistDialog onArtistAdded={fetchArtists} />
+                <MusicPlatformSearch artistId={0} onTrackAdded={fetchArtists} />
+              </div>
+            )}
           </div>
         </div>
 

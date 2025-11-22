@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import RatingSlider from "@/components/RatingSlider";
 import TrackCard from "@/components/TrackCard";
 import TrackDetailDialog from "@/components/TrackDetailDialog";
+import MusicPlatformSearch from "@/components/MusicPlatformSearch";
 import { toast } from "sonner";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 
@@ -346,10 +347,13 @@ export default function ArtistPage() {
           {/* Add Track Form */}
           {isAuthenticated && (
             <div className="glass-card rounded-xl p-6">
-              <h2 className="text-2xl font-semibold gradient-text mb-6 flex items-center gap-2">
-                <Plus className="w-6 h-6" />
-                Добавить трек
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold gradient-text flex items-center gap-2">
+                  <Plus className="w-6 h-6" />
+                  Добавить трек
+                </h2>
+                <MusicPlatformSearch artistId={artistId} onTrackAdded={fetchArtist} />
+              </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
