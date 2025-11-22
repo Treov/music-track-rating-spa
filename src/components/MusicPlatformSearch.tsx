@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Search, Loader2, Music, ExternalLink, Plus, Music2 } from "lucide-react";
 import { toast } from "sonner";
 import { UnifiedTrack } from "@/lib/music-api/types";
@@ -33,7 +32,7 @@ export default function MusicPlatformSearch({ artistId, onTrackAdded }: MusicPla
     setResults([]);
     
     try {
-      const response = await fetch(`/api/music/search?q=${encodeURIComponent(searchQuery)}&platforms=spotify&limit=10`);
+      const response = await fetch(`/api/music/search?q=${encodeURIComponent(searchQuery)}&platforms=spotify,soundcloud&limit=10`);
       
       if (!response.ok) {
         const error = await response.json();
@@ -55,6 +54,11 @@ export default function MusicPlatformSearch({ artistId, onTrackAdded }: MusicPla
   };
 
   const handleImportTrack = async (track: UnifiedTrack) => {
+    if (!artistId || artistId <= 0) {
+      toast.error("Ошибка: не указан артист для добавления трека");
+      return;
+    }
+
     setImporting(track.id);
     
     try {
@@ -121,7 +125,7 @@ export default function MusicPlatformSearch({ artistId, onTrackAdded }: MusicPla
       <DialogContent className="glass-card border-border max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="gradient-text text-2xl">Поиск треков по площадкам</DialogTitle>
-          <p className="text-sm text-muted-foreground">Найдите треки на Spotify, SoundCloud, VK и других платформах</p>
+          <p className="text-sm text-muted-foreground">Найдите треки на Spotify, SoundCloud и других платформах</p>
         </DialogHeader>
         
         <form onSubmit={handleSearch} className="space-y-4">

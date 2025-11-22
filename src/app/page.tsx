@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
 import ArtistCard from "@/components/ArtistCard";
 import LoginForm from "@/components/LoginForm";
-import MusicPlatformSearch from "@/components/MusicPlatformSearch";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -205,10 +204,7 @@ export default function Home() {
               />
             </div>
             {isAuthenticated && (
-              <div className="flex gap-2 w-full md:w-auto">
-                <AddArtistDialog onArtistAdded={fetchArtists} />
-                <MusicPlatformSearch artistId={0} onTrackAdded={fetchArtists} />
-              </div>
+              <AddArtistDialog onArtistAdded={fetchArtists} />
             )}
           </div>
         </div>

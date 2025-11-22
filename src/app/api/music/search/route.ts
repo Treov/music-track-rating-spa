@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchSpotifyTracks } from '@/lib/music-api/spotify';
+import { searchSoundCloudTracks } from '@/lib/music-api/soundcloud';
 import { UnifiedTrack } from '@/lib/music-api/types';
 
 export const maxDuration = 60;
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const platformsParam = searchParams.get('platforms');
-    const platforms = platformsParam?.split(',') || ['spotify'];
+    const platforms = platformsParam?.split(',') || ['spotify', 'soundcloud'];
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '10'), 20);
 
     if (!query || query.length < 2) {
@@ -74,8 +75,25 @@ export async function GET(request: NextRequest) {
             });
             break;
 
-          // Other platforms can be added here when credentials are available
           case 'soundcloud':
+            tracks = await searchSoundCloudTracks(query, limit);
+            const unifiedSoundCloudTracks: UnifiedTrack[] = tracks.map((track) => ({
+              platform: 'soundcloud' as const,
+              id: track.id,
+              title: track.title,
+              artist: track.artist,
+              album: track.album,
+              artworkUrl: track.albumArt || '',
+              duration: Math.round(track.durationMs / 1000),
+              streamUrl: track.streamUrl,
+              externalUrl: track.externalUrl,
+            }));
+            results.push({
+              platform: 'soundcloud',
+              tracks: unifiedSoundCloudTracks,
+            });
+            break;
+
           case 'vk':
           case 'yandex':
             // Skip silently if not configured
