@@ -11,11 +11,6 @@ interface LoginFormProps {
   onBack?: () => void;
 }
 
-const USERS = {
-  pumkingott: "sound2025",
-  vetoanda: "20162016"
-};
-
 export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,22 +26,40 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
 
     setLoading(true);
 
-    // Simulate network delay for better UX
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
 
-    // Check credentials
-    if (USERS[username as keyof typeof USERS] === password) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.code === "ACCOUNT_BANNED") {
+          toast.error("Ваш аккаунт заблокирован");
+        } else if (data.code === "INVALID_CREDENTIALS") {
+          toast.error("Неверный логин или пароль");
+        } else {
+          toast.error(data.error || "Ошибка входа");
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Save session with full user data including permissions
       const sessionData = {
-        username,
+        user: data.user,
         loginTime: Date.now(),
         expiresAt: Date.now() + 60 * 60 * 1000 // 1 hour
       };
       
       localStorage.setItem("music_app_session", JSON.stringify(sessionData));
-      toast.success(`Добро пожаловать, ${username}!`);
+      toast.success(`Добро пожаловать, ${data.user.displayName || data.user.username}!`);
       onLoginSuccess();
-    } else {
-      toast.error("Неверный логин или пароль");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Ошибка соединения с сервером");
     }
 
     setLoading(false);

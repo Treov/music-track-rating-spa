@@ -10,11 +10,22 @@ import { UnifiedTrack } from "@/lib/music-api/types";
 import TrackRatingDialog from "./TrackRatingDialog";
 import { Track } from "@/types";
 
-interface GlobalMusicSearchProps {
-  onTrackAdded: () => void;
+interface UserData {
+  id: number;
+  username: string;
+  displayName: string | null;
+  role: string;
+  permissions?: {
+    canAddArtists: boolean;
+  };
 }
 
-export default function GlobalMusicSearch({ onTrackAdded }: GlobalMusicSearchProps) {
+interface GlobalMusicSearchProps {
+  onTrackAdded: () => void;
+  currentUser: UserData;
+}
+
+export default function GlobalMusicSearch({ onTrackAdded, currentUser }: GlobalMusicSearchProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);

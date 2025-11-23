@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Artist } from "@/types";
-import { Search, Loader2, Music2, LogOut, LogIn } from "lucide-react";
+import { Search, Loader2, Music2, LogOut, LogIn, User, Users, Settings } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
@@ -10,13 +10,29 @@ import GlobalMusicSearch from "@/components/GlobalMusicSearch";
 import ArtistCard from "@/components/ArtistCard";
 import LoginForm from "@/components/LoginForm";
 import { toast } from "sonner";
+import Link from "next/link";
+
+interface UserData {
+  id: number;
+  username: string;
+  displayName: string | null;
+  role: string;
+  avatarUrl: string | null;
+  permissions?: {
+    canEditOthersRatings: boolean;
+    canDeleteOthersRatings: boolean;
+    canVerifyArtists: boolean;
+    canAddArtists: boolean;
+    canDeleteArtists: boolean;
+  };
+}
 
 export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string>("");
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -26,7 +42,7 @@ export default function Home() {
     checkAuth();
   }, []);
 
-  const checkAuth = () => {
+  const checkAuth = async () => {
     const sessionData = localStorage.getItem("music_app_session");
     
     if (sessionData) {
@@ -35,21 +51,34 @@ export default function Home() {
         const now = Date.now();
         
         // Check if session is expired (1 hour)
-        if (session.expiresAt && now < session.expiresAt) {
-          setIsAuthenticated(true);
-          setCurrentUser(session.username);
+        if (session.expiresAt && now < session.expiresAt && session.user) {
+          // Fetch fresh user data with permissions
+          const response = await fetch(`/api/users/${session.user.id}`);
+          if (response.ok) {
+            const userData = await response.json();
+            setCurrentUser(userData);
+            setIsAuthenticated(true);
+          } else {
+            // Session invalid, clear it
+            localStorage.removeItem("music_app_session");
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+          }
         } else {
           // Session expired
           localStorage.removeItem("music_app_session");
           setIsAuthenticated(false);
+          setCurrentUser(null);
           toast.error("Сессия истекла. Пожалуйста, войдите снова.");
         }
       } catch (error) {
         localStorage.removeItem("music_app_session");
         setIsAuthenticated(false);
+        setCurrentUser(null);
       }
     } else {
       setIsAuthenticated(false);
+      setCurrentUser(null);
     }
     
     setCheckingAuth(false);
@@ -83,7 +112,7 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem("music_app_session");
     setIsAuthenticated(false);
-    setCurrentUser("");
+    setCurrentUser(null);
     toast.success("Вы вышли из системы");
   };
 
@@ -113,12 +142,9 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const getTracksText = (count: number) => {
-    if (count === 0) return "треков";
-    if (count === 1) return "трек";
-    if (count >= 2 && count <= 4) return "трека";
-    return "треков";
-  };
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const canAddArtists = currentUser?.permissions?.canAddArtists || isSuperAdmin;
+  const canVerifyArtists = currentUser?.permissions?.canVerifyArtists || isSuperAdmin;
 
   // Show loading spinner while checking auth
   if (checkingAuth) {
@@ -158,12 +184,52 @@ export default function Home() {
             
             {/* User Info & Auth Buttons */}
             <div className="flex items-center gap-3">
-              {isAuthenticated ? (
+              {isAuthenticated && currentUser ? (
                 <>
                   <div className="glass-card px-4 py-2 rounded-lg">
-                    <p className="text-sm font-medium">{currentUser}</p>
-                    <p className="text-xs text-muted-foreground">Администратор</p>
+                    <p className="text-sm font-medium">{currentUser.displayName || currentUser.username}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {currentUser.role === "super_admin" ? "Главный админ" : 
+                       currentUser.role === "admin" ? "Администратор" : "Модератор"}
+                    </p>
                   </div>
+                  
+                  {/* Navigation buttons */}
+                  <Link href={`/profile/${currentUser.id}`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass-card border-border hover:border-primary/50"
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Профиль
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/evaluators">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass-card border-border hover:border-primary/50"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Оценщики
+                    </Button>
+                  </Link>
+                  
+                  {isSuperAdmin && (
+                    <Link href="/admin">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="glass-card border-border hover:border-primary/50"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Админпанель
+                      </Button>
+                    </Link>
+                  )}
+                  
                   <Button
                     onClick={handleLogout}
                     variant="outline"
@@ -205,8 +271,12 @@ export default function Home() {
               />
             </div>
             <div className="flex gap-2">
-              <GlobalMusicSearch onTrackAdded={fetchArtists} />
-              <AddArtistDialog onArtistAdded={fetchArtists} />
+              {isAuthenticated && canAddArtists && (
+                <>
+                  <GlobalMusicSearch onTrackAdded={fetchArtists} currentUser={currentUser!} />
+                  <AddArtistDialog onArtistAdded={fetchArtists} />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -225,7 +295,9 @@ export default function Home() {
                 ? "Артисты не найдены. Попробуйте другой запрос."
                 : "Добавьте первого артиста, чтобы начать оценивать треки."}
             </p>
-            {!search && <AddArtistDialog onArtistAdded={fetchArtists} />}
+            {!search && isAuthenticated && canAddArtists && (
+              <AddArtistDialog onArtistAdded={fetchArtists} />
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -236,6 +308,8 @@ export default function Home() {
                 onDelete={fetchArtists}
                 onVerify={fetchArtists}
                 isAdmin={isAuthenticated}
+                canVerify={canVerifyArtists}
+                currentUser={currentUser}
               />
             ))}
           </div>
