@@ -1,12 +1,28 @@
 import { db } from '@/db';
 import { users, userPermissions } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 
 async function main() {
-    const ventoandaUser = await db.select().from(users).where(eq(users.username, 'ventoanda')).limit(1);
-    const pumkingottUser = await db.select().from(users).where(eq(users.username, 'pumkingott')).limit(1);
+    // Query users table to get the IDs of ventoanda and pumkingott
+    const targetUsers = await db
+        .select({ id: users.id, username: users.username })
+        .from(users)
+        .where(
+            or(
+                eq(users.username, 'ventoanda'),
+                eq(users.username, 'pumkingott')
+            )
+        );
 
-    if (!ventoandaUser.length || !pumkingottUser.length) {
+    // Verify both users exist
+    if (targetUsers.length !== 2) {
+        throw new Error('Required users not found. Please run the users seeder first.');
+    }
+
+    const ventoandaUser = targetUsers.find(u => u.username === 'ventoanda');
+    const pumkingottUser = targetUsers.find(u => u.username === 'pumkingott');
+
+    if (!ventoandaUser || !pumkingottUser) {
         throw new Error('Required users not found. Please run the users seeder first.');
     }
 
@@ -14,7 +30,7 @@ async function main() {
 
     const samplePermissions = [
         {
-            userId: ventoandaUser[0].id,
+            userId: ventoandaUser.id,
             canEditOthersRatings: true,
             canDeleteOthersRatings: true,
             canVerifyArtists: true,
@@ -24,7 +40,7 @@ async function main() {
             updatedAt: currentTimestamp,
         },
         {
-            userId: pumkingottUser[0].id,
+            userId: pumkingottUser.id,
             canEditOthersRatings: true,
             canDeleteOthersRatings: true,
             canVerifyArtists: true,

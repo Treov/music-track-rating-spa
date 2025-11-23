@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Loader2, Shield, User as UserIcon } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, Shield, User as UserIcon, Activity, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<string>("admin");
+  const [role, setRole] = useState<string>("evaluator");
 
   useEffect(() => {
     checkAuth();
@@ -136,7 +136,7 @@ export default function AdminPage() {
       setPassword("");
       setConfirmPassword("");
       setDisplayName("");
-      setRole("admin");
+      setRole("evaluator");
     } catch (error) {
       console.error("Create error:", error);
       toast.error("Ошибка соединения");
@@ -155,7 +155,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen p-6 md:p-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Link href="/">
@@ -175,8 +175,41 @@ export default function AdminPage() {
             </h1>
           </div>
           <p className="text-muted-foreground">
-            Создание новых аккаунтов для участников проекта
+            Управление участниками проекта и наградами
           </p>
+        </div>
+
+        {/* Quick Navigation */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Link href="/evaluators">
+            <div className="glass-card rounded-xl p-6 hover:scale-105 transition-all cursor-pointer">
+              <UserIcon className="w-8 h-8 text-primary mb-3" />
+              <h3 className="font-semibold mb-1">Оценщики</h3>
+              <p className="text-sm text-muted-foreground">
+                Список всех участников проекта
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/logs">
+            <div className="glass-card rounded-xl p-6 hover:scale-105 transition-all cursor-pointer">
+              <Activity className="w-8 h-8 text-blue-500 mb-3" />
+              <h3 className="font-semibold mb-1">Логи активности</h3>
+              <p className="text-sm text-muted-foreground">
+                Отслеживание действий оценщиков
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/awards">
+            <div className="glass-card rounded-xl p-6 hover:scale-105 transition-all cursor-pointer">
+              <Award className="w-8 h-8 text-yellow-500 mb-3" />
+              <h3 className="font-semibold mb-1">Награды</h3>
+              <p className="text-sm text-muted-foreground">
+                Создание и присвоение наград
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* Create User Form */}
@@ -230,6 +263,12 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="evaluator">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="w-4 h-4 text-blue-500" />
+                      <span>Оценщик</span>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="admin">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-primary" />
@@ -308,16 +347,6 @@ export default function AdminPage() {
               )}
             </Button>
           </form>
-        </div>
-
-        {/* Quick Access */}
-        <div className="mt-6 flex gap-4">
-          <Link href="/evaluators" className="flex-1">
-            <Button variant="outline" className="w-full glass-card">
-              <UserIcon className="w-4 h-4 mr-2" />
-              Все оценщики
-            </Button>
-          </Link>
         </div>
       </div>
     </div>

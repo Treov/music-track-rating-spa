@@ -33,6 +33,7 @@ export const users = sqliteTable('users', {
   avatarUrl: text('avatar_url'),
   bio: text('bio'),
   role: text('role').notNull().default('admin'),
+  isVerified: integer('is_verified', { mode: 'boolean' }).notNull().default(false),
   isBanned: integer('is_banned', { mode: 'boolean' }).notNull().default(false),
   tracksRatedCount: integer('tracks_rated_count').notNull().default(0),
   tracksAddedCount: integer('tracks_added_count').notNull().default(0),
@@ -48,6 +49,45 @@ export const userPermissions = sqliteTable('user_permissions', {
   canVerifyArtists: integer('can_verify_artists', { mode: 'boolean' }).notNull().default(true),
   canAddArtists: integer('can_add_artists', { mode: 'boolean' }).notNull().default(true),
   canDeleteArtists: integer('can_delete_artists', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const awards = sqliteTable('awards', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  description: text('description'),
+  iconUrl: text('icon_url'),
+  color: text('color'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const userAwards = sqliteTable('user_awards', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  awardId: integer('award_id').notNull().references(() => awards.id),
+  assignedBy: integer('assigned_by').references(() => users.id),
+  assignedAt: text('assigned_at').notNull(),
+  createdAt: text('created_at').notNull(),
+});
+
+export const activityLogs = sqliteTable('activity_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  action: text('action').notNull(),
+  targetType: text('target_type'),
+  targetId: integer('target_id'),
+  details: text('details'),
+  ipAddress: text('ip_address'),
+  createdAt: text('created_at').notNull(),
+});
+
+export const socialLinks = sqliteTable('social_links', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  platform: text('platform').notNull(),
+  url: text('url').notNull(),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });

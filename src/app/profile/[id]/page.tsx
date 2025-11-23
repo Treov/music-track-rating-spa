@@ -2,12 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Save, Loader2, User, Music, Award } from "lucide-react";
+import { ArrowLeft, Camera, Save, Loader2, User, Music, Award, Plus, Trash2, ExternalLink, CheckCircle2, Globe, Youtube, Send, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface UserProfile {
   id: number;
@@ -16,10 +23,51 @@ interface UserProfile {
   avatarUrl: string | null;
   bio: string | null;
   role: string;
+  isVerified: boolean;
   tracksRatedCount: number;
   tracksAddedCount: number;
   createdAt: string;
 }
+
+interface SocialLink {
+  id: number;
+  platform: string;
+  url: string;
+}
+
+interface UserAward {
+  id: number;
+  awardId: number;
+  name: string;
+  description: string | null;
+  iconUrl: string | null;
+  color: string | null;
+  assignedAt: string;
+}
+
+const platformIcons: Record<string, any> = {
+  vk: Globe,
+  instagram: Camera,
+  soundcloud: Music,
+  youtube: Youtube,
+  telegram: Send,
+  discord: MessageCircle,
+  yandex_music: Music,
+  genius: Music,
+  website: Globe,
+};
+
+const platformLabels: Record<string, string> = {
+  vk: "VK",
+  instagram: "Instagram",
+  soundcloud: "SoundCloud",
+  youtube: "YouTube",
+  telegram: "Telegram",
+  discord: "Discord",
+  yandex_music: "Яндекс Музыка",
+  genius: "Genius",
+  website: "Веб-сайт",
+};
 
 export default function ProfilePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -28,11 +76,18 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [userAwards, setUserAwards] = useState<UserAward[]>([]);
   
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
+  
+  // Social link form
+  const [newLinkPlatform, setNewLinkPlatform] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [addingLink, setAddingLink] = useState(false);
 
   useEffect(() => {
     checkAuthAndFetch();
@@ -61,25 +116,59 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       setCurrentUserId(session.user.id);
       setIsOwnProfile(session.user.id === parseInt(params.id));
 
-      // Fetch profile data
-      const response = await fetch(`/api/users/${params.id}`);
-      if (!response.ok) {
-        toast.error("Профиль не найден");
-        router.push("/");
-        return;
-      }
-
-      const data = await response.json();
-      setProfile(data);
-      setDisplayName(data.displayName || "");
-      setAvatarUrl(data.avatarUrl || "");
-      setBio(data.bio || "");
+      // Fetch profile data, social links, and awards
+      await Promise.all([
+        fetchProfile(),
+        fetchSocialLinks(),
+        fetchUserAwards()
+      ]);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Ошибка загрузки профиля");
       router.push("/");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    const response = await fetch(`/api/users/${params.id}`);
+    if (!response.ok) {
+      toast.error("Профиль не найден");
+      router.push("/");
+      return;
+    }
+
+    const data = await response.json();
+    setProfile(data);
+    setDisplayName(data.displayName || "");
+    setAvatarUrl(data.avatarUrl || "");
+    setBio(data.bio || "");
+  };
+
+  const fetchSocialLinks = async () => {
+    try {
+      const response = await fetch(`/api/users/${params.id}/social-links`);
+      if (response.ok) {
+        const data = await response.json();
+        setSocialLinks(data);
+      }
+    } catch (error) {
+      console.error("Error fetching social links:", error);
+    }
+  };
+
+  const fetchUserAwards = async () => {
+    try {
+      // Fetch user awards from userAwards endpoint
+      const response = await fetch(`/api/users/${params.id}`);
+      if (response.ok) {
+        const userData = await response.json();
+        // TODO: Add awards to API response
+        setUserAwards([]);
+      }
+    } catch (error) {
+      console.error("Error fetching awards:", error);
     }
   };
 
@@ -128,6 +217,73 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleAddSocialLink = async () => {
+    if (!newLinkPlatform || !newLinkUrl.trim()) {
+      toast.error("Заполните все поля");
+      return;
+    }
+
+    setAddingLink(true);
+
+    try {
+      const sessionData = localStorage.getItem("music_app_session");
+      const session = JSON.parse(sessionData!);
+
+      const response = await fetch(`/api/users/${params.id}/social-links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: newLinkPlatform,
+          url: newLinkUrl.trim(),
+          authUser: session.user
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.error || "Ошибка добавления ссылки");
+        setAddingLink(false);
+        return;
+      }
+
+      toast.success("Ссылка добавлена");
+      setNewLinkPlatform("");
+      setNewLinkUrl("");
+      fetchSocialLinks();
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Ошибка добавления");
+    } finally {
+      setAddingLink(false);
+    }
+  };
+
+  const handleDeleteSocialLink = async (linkId: number) => {
+    if (!confirm("Удалить эту ссылку?")) return;
+
+    try {
+      const sessionData = localStorage.getItem("music_app_session");
+      const session = JSON.parse(sessionData!);
+
+      const response = await fetch(`/api/users/${params.id}/social-links/${linkId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ authUser: session.user })
+      });
+
+      if (!response.ok) {
+        toast.error("Ошибка удаления");
+        return;
+      }
+
+      toast.success("Ссылка удалена");
+      fetchSocialLinks();
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Ошибка удаления");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -145,9 +301,14 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       case "super_admin": return "Главный администратор";
       case "admin": return "Администратор";
       case "moderator": return "Модератор";
+      case "evaluator": return "Оценщик";
       default: return role;
     }
   };
+
+  const availablePlatforms = Object.keys(platformLabels).filter(
+    platform => !socialLinks.some(link => link.platform === platform)
+  );
 
   return (
     <div className="min-h-screen p-6 md:p-8">
@@ -186,6 +347,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                     <Camera className="w-4 h-4" />
                   </div>
                 )}
+                {profile.isVerified && (
+                  <div className="absolute top-0 right-0 p-1 rounded-full bg-green-500">
+                    <CheckCircle2 className="w-5 h-5 text-white" />
+                  </div>
+                )}
               </div>
               
               {/* Stats */}
@@ -214,8 +380,16 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                   {profile.displayName || profile.username}
                 </h1>
                 <p className="text-sm text-muted-foreground">@{profile.username}</p>
-                <div className="mt-2 inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
-                  {getRoleLabel(profile.role)}
+                <div className="mt-2 flex gap-2 items-center flex-wrap">
+                  <div className="inline-block px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+                    {getRoleLabel(profile.role)}
+                  </div>
+                  {profile.isVerified && (
+                    <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-500/20 text-green-500 text-sm font-medium">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Верифицирован
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -284,6 +458,126 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Awards */}
+        {userAwards.length > 0 && (
+          <div className="glass-card rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-yellow-500" />
+              Награды
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {userAwards.map((award) => (
+                <div
+                  key={award.id}
+                  className="glass-card p-4 rounded-lg flex flex-col items-center text-center"
+                >
+                  {award.iconUrl ? (
+                    <img src={award.iconUrl} alt={award.name} className="w-12 h-12 mb-2" />
+                  ) : (
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center mb-2"
+                      style={{ backgroundColor: award.color || "#9333ea" }}
+                    >
+                      <Award className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                  <p className="font-semibold text-sm">{award.name}</p>
+                  {award.description && (
+                    <p className="text-xs text-muted-foreground mt-1">{award.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Social Links */}
+        <div className="glass-card rounded-xl p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">Социальные сети</h3>
+          
+          {socialLinks.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {socialLinks.map((link) => {
+                const Icon = platformIcons[link.platform] || Globe;
+                return (
+                  <div
+                    key={link.id}
+                    className="glass-card p-3 rounded-lg flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">{platformLabels[link.platform]}</p>
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                        >
+                          Открыть <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                    {isOwnProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteSocialLink(link.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {isOwnProfile && availablePlatforms.length > 0 && (
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-sm font-medium">Добавить социальную сеть</p>
+              <div className="flex gap-2">
+                <Select value={newLinkPlatform} onValueChange={setNewLinkPlatform}>
+                  <SelectTrigger className="glass-card border-border w-[200px]">
+                    <SelectValue placeholder="Платформа" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availablePlatforms.map((platform) => (
+                      <SelectItem key={platform} value={platform}>
+                        {platformLabels[platform]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={newLinkUrl}
+                  onChange={(e) => setNewLinkUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="glass-card border-border flex-1"
+                />
+                <Button
+                  onClick={handleAddSocialLink}
+                  disabled={addingLink}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {addingLink ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {socialLinks.length === 0 && !isOwnProfile && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Пользователь не добавил социальные сети
+            </p>
+          )}
         </div>
 
         {/* Account Info */}

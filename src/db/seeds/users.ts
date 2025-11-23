@@ -1,10 +1,10 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 async function main() {
-    const currentTimestamp = new Date().toISOString();
-    
+    const currentDate = new Date().toISOString();
+
     const sampleUsers = [
         {
             username: 'ventoanda',
@@ -13,11 +13,12 @@ async function main() {
             avatarUrl: null,
             bio: null,
             role: 'super_admin',
+            isVerified: true,
             isBanned: false,
             tracksRatedCount: 0,
             tracksAddedCount: 0,
-            createdAt: currentTimestamp,
-            updatedAt: currentTimestamp,
+            createdAt: currentDate,
+            updatedAt: currentDate,
         },
         {
             username: 'pumkingott',
@@ -26,18 +27,18 @@ async function main() {
             avatarUrl: null,
             bio: null,
             role: 'super_admin',
+            isVerified: true,
             isBanned: false,
             tracksRatedCount: 0,
             tracksAddedCount: 0,
-            createdAt: currentTimestamp,
-            updatedAt: currentTimestamp,
+            createdAt: currentDate,
+            updatedAt: currentDate,
         },
     ];
 
-    const result = await db.insert(users).values(sampleUsers).returning({ id: users.id });
+    await db.insert(users).values(sampleUsers).returning();
     
     console.log('✅ Users seeder completed successfully');
-    console.log(`Created super admin accounts with IDs: ${result.map(r => r.id).join(', ')}`);
 }
 
 main().catch((error) => {

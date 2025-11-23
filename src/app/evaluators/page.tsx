@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, Shield, Crown, Search, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, User, Shield, Crown, Search, Loader2, Settings as SettingsIcon, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ interface UserWithPermissions {
   displayName: string | null;
   avatarUrl: string | null;
   role: string;
+  isVerified: boolean;
   isBanned: boolean;
   tracksRatedCount: number;
   tracksAddedCount: number;
@@ -58,26 +59,22 @@ export default function EvaluatorsPage() {
   const checkAuthAndFetch = async () => {
     const sessionData = localStorage.getItem("music_app_session");
     
-    if (!sessionData) {
-      toast.error("Необходима авторизация");
-      router.push("/");
-      return;
+    // Check auth but don't require it
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        const now = Date.now();
+        
+        if (session.expiresAt && now < session.expiresAt && session.user) {
+          setCurrentUser(session.user);
+        }
+      } catch (error) {
+        console.error("Error parsing session:", error);
+      }
     }
 
+    // Fetch all users (public endpoint)
     try {
-      const session = JSON.parse(sessionData);
-      const now = Date.now();
-      
-      if (!session.expiresAt || now >= session.expiresAt || !session.user) {
-        localStorage.removeItem("music_app_session");
-        toast.error("Сессия истекла");
-        router.push("/");
-        return;
-      }
-
-      setCurrentUser(session.user);
-
-      // Fetch all users
       const response = await fetch("/api/users");
       if (!response.ok) {
         toast.error("Ошибка загрузки пользователей");
@@ -105,6 +102,7 @@ export default function EvaluatorsPage() {
     switch (role) {
       case "super_admin": return <Crown className="w-5 h-5 text-yellow-500" />;
       case "admin": return <Shield className="w-5 h-5 text-primary" />;
+      case "evaluator": return <User className="w-5 h-5 text-blue-500" />;
       default: return <User className="w-5 h-5 text-muted-foreground" />;
     }
   };
@@ -114,6 +112,7 @@ export default function EvaluatorsPage() {
       case "super_admin": return "Главный админ";
       case "admin": return "Администратор";
       case "moderator": return "Модератор";
+      case "evaluator": return "Оценщик";
       default: return role;
     }
   };
@@ -168,8 +167,15 @@ export default function EvaluatorsPage() {
               key={user.id}
               className={`glass-card rounded-xl p-6 ${
                 user.isBanned ? "opacity-50" : ""
-              } transition-all hover:scale-105`}
+              } transition-all hover:scale-105 relative`}
             >
+              {/* Verification Badge */}
+              {user.isVerified && (
+                <div className="absolute top-4 right-4">
+                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                </div>
+              )}
+
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -199,16 +205,17 @@ export default function EvaluatorsPage() {
               </div>
 
               {/* Role Badge */}
-              <div className="mb-4">
+              <div className="mb-4 flex gap-2 flex-wrap">
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
                   user.role === "super_admin" ? "bg-yellow-500/20 text-yellow-500" :
                   user.role === "admin" ? "bg-primary/20 text-primary" :
+                  user.role === "evaluator" ? "bg-blue-500/20 text-blue-500" :
                   "bg-muted text-muted-foreground"
                 }`}>
                   {getRoleLabel(user.role)}
                 </span>
                 {user.isBanned && (
-                  <span className="ml-2 inline-block px-3 py-1 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
                     Забанен
                   </span>
                 )}

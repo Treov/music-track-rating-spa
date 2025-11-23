@@ -2,10 +2,11 @@ export interface Artist {
   id: number;
   name: string;
   imageUrl: string | null;
+  verified: number;
   createdAt: string;
   updatedAt: string;
   trackCount?: number;
-  tracks?: Track[];
+  avgRating?: number | null;
 }
 
 export interface Track {
@@ -14,6 +15,7 @@ export interface Track {
   artistId: number;
   artistName?: string;
   albumArt: string | null;
+  audioUrl: string | null;
   vocals: number;
   production: number;
   lyrics: number;
@@ -28,6 +30,7 @@ export interface TrackFormData {
   title: string;
   artistId: number;
   albumArt?: string;
+  audioUrl?: string;
   vocals: number;
   production: number;
   lyrics: number;

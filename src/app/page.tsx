@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Artist } from "@/types";
-import { Search, Loader2, Music2, LogOut, LogIn, User, Users, Settings } from "lucide-react";
+import { Search, Loader2, Music2, LogOut, LogIn, User, Users, Settings, TrendingUp, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AddArtistDialog from "@/components/AddArtistDialog";
@@ -11,6 +11,13 @@ import ArtistCard from "@/components/ArtistCard";
 import LoginForm from "@/components/LoginForm";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface UserData {
   id: number;
@@ -29,13 +36,20 @@ interface UserData {
 
 export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [topArtists, setTopArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [topLoading, setTopLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserData | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  // Top artists filters
+  const [sortBy, setSortBy] = useState<'tracks' | 'rating'>('tracks');
+  const [minTracks, setMinTracks] = useState<string>('0');
+  const [minRating, setMinRating] = useState<string>('0');
 
   // Check authentication on mount
   useEffect(() => {
@@ -134,6 +148,27 @@ export default function Home() {
     }
   };
 
+  const fetchTopArtists = async () => {
+    try {
+      setTopLoading(true);
+      const params = new URLSearchParams();
+      params.append("sortBy", sortBy);
+      params.append("limit", "10");
+      if (minTracks) params.append("minTracks", minTracks);
+      if (minRating) params.append("minRating", minRating);
+      
+      const response = await fetch(`/api/artists?${params}`);
+      if (!response.ok) throw new Error("Ошибка загрузки");
+      
+      const data = await response.json();
+      setTopArtists(data);
+    } catch (error) {
+      console.error("Error fetching top artists:", error);
+    } finally {
+      setTopLoading(false);
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchArtists();
@@ -141,6 +176,10 @@ export default function Home() {
 
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    fetchTopArtists();
+  }, [sortBy, minTracks, minRating]);
 
   const isSuperAdmin = currentUser?.role === "super_admin";
   const canAddArtists = currentUser?.permissions?.canAddArtists || isSuperAdmin;
@@ -190,7 +229,8 @@ export default function Home() {
                     <p className="text-sm font-medium">{currentUser.displayName || currentUser.username}</p>
                     <p className="text-xs text-muted-foreground">
                       {currentUser.role === "super_admin" ? "Главный админ" : 
-                       currentUser.role === "admin" ? "Администратор" : "Модератор"}
+                       currentUser.role === "admin" ? "Администратор" : 
+                       currentUser.role === "evaluator" ? "Оценщик" : "Модератор"}
                     </p>
                   </div>
                   
@@ -241,14 +281,26 @@ export default function Home() {
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={handleShowLogin}
-                  className="bg-primary hover:bg-primary/90 glow-purple"
-                  size="sm"
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  login
-                </Button>
+                <>
+                  <Link href="/evaluators">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass-card border-border hover:border-primary/50"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Оценщики
+                    </Button>
+                  </Link>
+                  <Button
+                    onClick={handleShowLogin}
+                    className="bg-primary hover:bg-primary/90 glow-purple"
+                    size="sm"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    login
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -256,6 +308,105 @@ export default function Home() {
           <p className="text-muted-foreground text-center">
             Developed by VENTO ANDA
           </p>
+        </div>
+
+        {/* Top Artists Section */}
+        <div className="glass-card rounded-xl p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-primary" />
+              <h2 className="text-2xl font-bold gradient-text">Топ исполнителей</h2>
+            </div>
+            <Filter className="w-5 h-5 text-muted-foreground" />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row gap-3 mb-6">
+            <div className="flex-1">
+              <label className="text-sm text-muted-foreground mb-2 block">Сортировка</label>
+              <Select value={sortBy} onValueChange={(value: 'tracks' | 'rating') => setSortBy(value)}>
+                <SelectTrigger className="glass-card border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tracks">По количеству треков</SelectItem>
+                  <SelectItem value="rating">По средней оценке</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-muted-foreground mb-2 block">Минимум треков</label>
+              <Input
+                type="number"
+                min="0"
+                value={minTracks}
+                onChange={(e) => setMinTracks(e.target.value)}
+                className="glass-card border-border"
+                placeholder="0"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-muted-foreground mb-2 block">Минимальная оценка</label>
+              <Input
+                type="number"
+                min="0"
+                max="10"
+                step="0.1"
+                value={minRating}
+                onChange={(e) => setMinRating(e.target.value)}
+                className="glass-card border-border"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          {/* Top Artists Grid */}
+          {topLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : topArtists.length === 0 ? (
+            <div className="text-center py-12">
+              <Music2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground">Нет артистов с данными критериями</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {topArtists.map((artist, index) => (
+                <Link key={artist.id} href={`/artist/${artist.id}`}>
+                  <div className="glass-card rounded-xl p-4 hover:scale-105 transition-all cursor-pointer">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="text-2xl font-bold text-primary">#{index + 1}</div>
+                      {artist.imageUrl ? (
+                        <img
+                          src={artist.imageUrl}
+                          alt={artist.name}
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                          <Music2 className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold truncate mb-2">{artist.name}</h3>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Треков:</span>
+                        <span className="font-semibold">{artist.trackCount || 0}</span>
+                      </div>
+                      {artist.avgRating !== null && artist.avgRating !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Рейтинг:</span>
+                          <span className="font-semibold text-primary">{artist.avgRating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions Bar */}

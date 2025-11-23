@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { artists, tracks } from '@/db/schema';
-import { eq, like, sql } from 'drizzle-orm';
+import { eq, like, sql, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,15 +9,20 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '10'), 100);
     const offset = parseInt(searchParams.get('offset') ?? '0');
     const search = searchParams.get('search');
+    const sortBy = searchParams.get('sortBy'); // 'tracks' or 'rating'
+    const minTracks = parseInt(searchParams.get('minTracks') ?? '0');
+    const minRating = parseFloat(searchParams.get('minRating') ?? '0');
 
     let query = db
       .select({
         id: artists.id,
         name: artists.name,
         imageUrl: artists.imageUrl,
+        verified: artists.verified,
         createdAt: artists.createdAt,
         updatedAt: artists.updatedAt,
         trackCount: sql<number>`cast(count(${tracks.id}) as integer)`,
+        avgRating: sql<number>`ROUND(CAST(AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0) AS REAL), 2)`,
       })
       .from(artists)
       .leftJoin(tracks, eq(artists.id, tracks.artistId))
@@ -28,9 +33,25 @@ export async function GET(request: NextRequest) {
       query = query.where(like(artists.name, `%${search}%`));
     }
 
+    // Apply sorting
+    if (sortBy === 'tracks') {
+      query = query.orderBy(desc(sql`cast(count(${tracks.id}) as integer)`));
+    } else if (sortBy === 'rating') {
+      query = query.orderBy(desc(sql`AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0)`));
+    } else {
+      query = query.orderBy(desc(artists.createdAt));
+    }
+
     const results = await query.limit(limit).offset(offset);
 
-    return NextResponse.json(results);
+    // Apply filters after query (since HAVING is complex with drizzle)
+    const filtered = results.filter(artist => {
+      if (minTracks > 0 && artist.trackCount < minTracks) return false;
+      if (minRating > 0 && (artist.avgRating === null || artist.avgRating < minRating)) return false;
+      return true;
+    });
+
+    return NextResponse.json(filtered);
   } catch (error) {
     console.error('GET error:', error);
     return NextResponse.json(
@@ -45,7 +66,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, imageUrl } = body;
 
-    // Validate required fields
     if (!name) {
       return NextResponse.json(
         { error: 'Name is required', code: 'MISSING_REQUIRED_FIELD' },
@@ -53,7 +73,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Trim and validate name is not empty
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
       return NextResponse.json(
@@ -62,7 +81,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate name
     const existingArtist = await db
       .select()
       .from(artists)
@@ -76,16 +94,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare insert data
     const now = new Date().toISOString();
     const insertData = {
       name: trimmedName,
       imageUrl: imageUrl || null,
+      verified: 0,
       createdAt: now,
       updatedAt: now,
     };
 
-    // Insert new artist
     const newArtist = await db.insert(artists).values(insertData).returning();
 
     return NextResponse.json(newArtist[0], { status: 201 });
