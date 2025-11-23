@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, Shield, Crown, Search, Loader2, Settings as SettingsIcon, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, User, Shield, Crown, Search, Loader2, Settings as SettingsIcon, CheckCircle2, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -82,10 +82,12 @@ export default function EvaluatorsPage() {
       }
 
       const data = await response.json();
-      // Sort by role (super_admin first) and then by tracksRatedCount
+      // Sort by role (ceo first, then admin, then moderator, then evaluator) and then by tracksRatedCount
+      const roleOrder = { ceo: 0, admin: 1, moderator: 2, evaluator: 3 };
       const sorted = data.sort((a: UserWithPermissions, b: UserWithPermissions) => {
-        if (a.role === "super_admin" && b.role !== "super_admin") return -1;
-        if (b.role === "super_admin" && a.role !== "super_admin") return 1;
+        const aOrder = roleOrder[a.role as keyof typeof roleOrder] ?? 999;
+        const bOrder = roleOrder[b.role as keyof typeof roleOrder] ?? 999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
         return b.tracksRatedCount - a.tracksRatedCount;
       });
       setUsers(sorted);
@@ -100,16 +102,17 @@ export default function EvaluatorsPage() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case "super_admin": return <Crown className="w-5 h-5 text-yellow-500" />;
+      case "ceo": return <Crown className="w-5 h-5 text-yellow-500" />;
       case "admin": return <Shield className="w-5 h-5 text-primary" />;
-      case "evaluator": return <User className="w-5 h-5 text-blue-500" />;
+      case "moderator": return <Award className="w-5 h-5 text-blue-500" />;
+      case "evaluator": return <User className="w-5 h-5 text-green-500" />;
       default: return <User className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case "super_admin": return "Главный админ";
+      case "ceo": return "CEO";
       case "admin": return "Администратор";
       case "moderator": return "Модератор";
       case "evaluator": return "Оценщик";
@@ -117,7 +120,7 @@ export default function EvaluatorsPage() {
     }
   };
 
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  const isCEO = currentUser?.role === "ceo";
 
   if (loading) {
     return (
@@ -207,9 +210,10 @@ export default function EvaluatorsPage() {
               {/* Role Badge */}
               <div className="mb-4 flex gap-2 flex-wrap">
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                  user.role === "super_admin" ? "bg-yellow-500/20 text-yellow-500" :
+                  user.role === "ceo" ? "bg-yellow-500/20 text-yellow-500" :
                   user.role === "admin" ? "bg-primary/20 text-primary" :
-                  user.role === "evaluator" ? "bg-blue-500/20 text-blue-500" :
+                  user.role === "moderator" ? "bg-blue-500/20 text-blue-500" :
+                  user.role === "evaluator" ? "bg-green-500/20 text-green-500" :
                   "bg-muted text-muted-foreground"
                 }`}>
                   {getRoleLabel(user.role)}
@@ -242,7 +246,7 @@ export default function EvaluatorsPage() {
                   </Button>
                 </Link>
                 
-                {isSuperAdmin && user.id !== currentUser?.id && (
+                {isCEO && user.id !== currentUser?.id && (
                   <Link href={`/admin/user/${user.id}`}>
                     <Button variant="outline" size="sm" className="glass-card">
                       <SettingsIcon className="w-4 h-4" />

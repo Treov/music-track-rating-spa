@@ -32,6 +32,7 @@ export async function GET(
         avatarUrl: users.avatarUrl,
         bio: users.bio,
         role: users.role,
+        isVerified: users.isVerified,
         isBanned: users.isBanned,
         tracksRatedCount: users.tracksRatedCount,
         tracksAddedCount: users.tracksAddedCount,
@@ -119,7 +120,61 @@ export async function PUT(
 
     // Parse request body
     const body = await request.json();
-    const { displayName, avatarUrl, bio } = body;
+    const { username, displayName, avatarUrl, bio } = body;
+
+    // Validate username if provided
+    if (username !== undefined) {
+      if (typeof username !== 'string') {
+        return NextResponse.json(
+          {
+            error: 'Username must be a string',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        );
+      }
+      
+      const trimmedUsername = username.trim();
+      
+      if (trimmedUsername.length < 3) {
+        return NextResponse.json(
+          {
+            error: 'Username must be at least 3 characters',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        );
+      }
+      
+      if (trimmedUsername.length > 50) {
+        return NextResponse.json(
+          {
+            error: 'Username must not exceed 50 characters',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Check if username is already taken by another user
+      if (trimmedUsername !== existingUser[0].username) {
+        const duplicateCheck = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, trimmedUsername))
+          .limit(1);
+          
+        if (duplicateCheck.length > 0 && duplicateCheck[0].id !== userId) {
+          return NextResponse.json(
+            {
+              error: 'Username already taken',
+              code: 'USERNAME_TAKEN',
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
 
     // Validate displayName: optional, max 100 characters
     if (displayName !== undefined && displayName !== null) {
@@ -191,6 +246,7 @@ export async function PUT(
 
     // Build update object with only provided fields
     const updates: {
+      username?: string;
       displayName?: string | null;
       avatarUrl?: string | null;
       bio?: string | null;
@@ -199,6 +255,9 @@ export async function PUT(
       updatedAt: new Date().toISOString(),
     };
 
+    if (username !== undefined) {
+      updates.username = username.trim();
+    }
     if (displayName !== undefined) {
       updates.displayName = displayName;
     }
@@ -221,6 +280,7 @@ export async function PUT(
         avatarUrl: users.avatarUrl,
         bio: users.bio,
         role: users.role,
+        isVerified: users.isVerified,
         isBanned: users.isBanned,
         tracksRatedCount: users.tracksRatedCount,
         tracksAddedCount: users.tracksAddedCount,

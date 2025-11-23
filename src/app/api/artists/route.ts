@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         updatedAt: artists.updatedAt,
         trackCount: sql<number>`cast(count(${tracks.id}) as integer)`,
         avgRating: sql<number>`ROUND(CAST(AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0) AS REAL), 2)`,
+        totalRating: sql<number>`ROUND(CAST(SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0 AS REAL), 2)`,
       })
       .from(artists)
       .leftJoin(tracks, eq(artists.id, tracks.artistId))
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     if (sortBy === 'tracks') {
       query = query.orderBy(desc(sql`cast(count(${tracks.id}) as integer)`));
     } else if (sortBy === 'rating') {
-      query = query.orderBy(desc(sql`AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0)`));
+      query = query.orderBy(desc(sql`SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0`));
     } else {
       query = query.orderBy(desc(artists.createdAt));
     }
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Apply filters after query (since HAVING is complex with drizzle)
     const filtered = results.filter(artist => {
       if (minTracks > 0 && artist.trackCount < minTracks) return false;
-      if (minRating > 0 && (artist.avgRating === null || artist.avgRating < minRating)) return false;
+      if (minRating > 0 && (artist.totalRating === null || artist.totalRating < minRating)) return false;
       return true;
     });
 

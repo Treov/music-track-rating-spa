@@ -7,6 +7,7 @@ export interface Artist {
   updatedAt: string;
   trackCount?: number;
   avgRating?: number | null;
+  totalRating?: number | null;
 }
 
 export interface Track {

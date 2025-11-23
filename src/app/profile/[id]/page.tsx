@@ -80,6 +80,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
   const [userAwards, setUserAwards] = useState<UserAward[]>([]);
   
   // Form state
+  const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
@@ -141,6 +142,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
     const data = await response.json();
     setProfile(data);
+    setUsername(data.username || "");
     setDisplayName(data.displayName || "");
     setAvatarUrl(data.avatarUrl || "");
     setBio(data.bio || "");
@@ -178,6 +180,17 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       return;
     }
 
+    // Validate username
+    if (!username.trim()) {
+      toast.error("Username не может быть пустым");
+      return;
+    }
+
+    if (username.trim().length < 3) {
+      toast.error("Username должен содержать минимум 3 символа");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -185,6 +198,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          username: username.trim(),
           displayName: displayName.trim() || null,
           avatarUrl: avatarUrl.trim() || null,
           bio: bio.trim() || null
@@ -202,10 +216,11 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
       setProfile(updated);
       toast.success("Профиль обновлен!");
       
-      // Update session if display name changed
+      // Update session if username or display name changed
       const sessionData = localStorage.getItem("music_app_session");
       if (sessionData) {
         const session = JSON.parse(sessionData);
+        session.user.username = updated.username;
         session.user.displayName = updated.displayName;
         localStorage.setItem("music_app_session", JSON.stringify(session));
       }
@@ -298,7 +313,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case "super_admin": return "Главный администратор";
+      case "ceo": return "CEO";
       case "admin": return "Администратор";
       case "moderator": return "Модератор";
       case "evaluator": return "Оценщик";
@@ -395,6 +410,20 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
 
               {isOwnProfile ? (
                 <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Username (ID)</label>
+                    <Input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Ваш username"
+                      className="glass-card border-border"
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Минимум 3 символа, используется для входа и уникальной идентификации
+                    </p>
+                  </div>
+
                   <div>
                     <label className="text-sm font-medium mb-2 block">Отображаемое имя</label>
                     <Input
