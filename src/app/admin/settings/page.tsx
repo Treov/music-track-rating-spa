@@ -37,23 +37,24 @@ export default function SettingsPage() {
 
     try {
       const session = JSON.parse(sessionData);
-      const now = Date.now();
       
-      if (session.expiresAt && now < session.expiresAt && session.user) {
-        // Check if user is super_admin (CEO)
-        if (session.user.role !== "super_admin") {
-          toast.error("Доступ запрещен. Требуются права CEO.");
-          router.push("/");
-          return;
-        }
-        
-        setCurrentUser(session.user);
-        await fetchSettings();
-      } else {
+      // Check if session has user data (no expiration check)
+      if (!session.user || !session.user.id) {
         localStorage.removeItem("music_app_session");
-        toast.error("Сессия истекла");
+        toast.error("Сессия недействительна");
         router.push("/");
+        return;
       }
+
+      // Check if user is super_admin (CEO)
+      if (session.user.role !== "super_admin") {
+        toast.error("Доступ запрещен. Требуются права CEO.");
+        router.push("/");
+        return;
+      }
+      
+      setCurrentUser(session.user);
+      await fetchSettings();
     } catch (error) {
       console.error("Error:", error);
       toast.error("Ошибка авторизации");

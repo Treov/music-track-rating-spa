@@ -61,11 +61,11 @@ export default function ActivityLogsPage() {
 
     try {
       const session = JSON.parse(sessionData);
-      const now = Date.now();
       
-      if (!session.expiresAt || now >= session.expiresAt || !session.user) {
+      // Check if session has user data (no expiration check)
+      if (!session.user || !session.user.id) {
         localStorage.removeItem("music_app_session");
-        toast.error("Сессия истекла");
+        toast.error("Сессия недействительна");
         router.push("/");
         return;
       }
