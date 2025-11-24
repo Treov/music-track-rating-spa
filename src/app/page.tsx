@@ -45,6 +45,7 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [eventName, setEventName] = useState("HOSPITAL TOURNAMENT");
   
   // Top artists filters
   const [showTop, setShowTop] = useState(false);
@@ -55,7 +56,20 @@ export default function Home() {
   // Check authentication on mount
   useEffect(() => {
     checkAuth();
+    fetchEventName();
   }, []);
+
+  const fetchEventName = async () => {
+    try {
+      const response = await fetch("/api/settings/eventName");
+      if (response.ok) {
+        const data = await response.json();
+        setEventName(data.value);
+      }
+    } catch (error) {
+      console.error("Error fetching event name:", error);
+    }
+  };
 
   const checkAuth = async () => {
     const sessionData = localStorage.getItem("music_app_session");
@@ -184,7 +198,7 @@ export default function Home() {
     }
   }, [sortBy, minTracks, minRating, showTop]);
 
-  const isCEO = currentUser?.role === "ceo";
+  const isCEO = currentUser?.role === "super_admin";
   const canAddArtists = currentUser?.permissions?.canAddArtists || isCEO;
   const canVerifyArtists = currentUser?.permissions?.canVerifyArtists || isCEO;
 
@@ -217,10 +231,10 @@ export default function Home() {
                 <Music2 className="w-10 h-10 text-primary" />
                 <div>
                   <h1 className="text-3xl md:text-4xl font-bold gradient-text">
-                    Soundcore x pumkingott
+                    Soundcore
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Event HOSPITAL TOURNAMENT
+                    Event {eventName}
                   </p>
                 </div>
               </div>
@@ -232,7 +246,7 @@ export default function Home() {
                     <div className="glass-card px-4 py-2 rounded-lg">
                       <p className="text-sm font-medium">{currentUser.displayName || currentUser.username}</p>
                       <p className="text-xs text-muted-foreground">
-                        {currentUser.role === "ceo" ? "CEO" : 
+                        {currentUser.role === "super_admin" ? "CEO" : 
                          currentUser.role === "admin" ? "Администратор" : 
                          currentUser.role === "evaluator" ? "Оценщик" : "Модератор"}
                       </p>
@@ -490,7 +504,7 @@ export default function Home() {
       <footer className="fixed bottom-0 left-0 right-0 glass-card border-t border-border py-4 px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            © 2024 Soundcore x pumkingott
+            © 2025 Soundcore
           </p>
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">Credits:</span>

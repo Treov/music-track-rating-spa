@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchSpotifyTracks } from '@/lib/music-api/spotify';
 import { searchSoundCloudTracks } from '@/lib/music-api/soundcloud';
+import { searchYandexTracks } from '@/lib/music-api/yandex';
 import { UnifiedTrack } from '@/lib/music-api/types';
 
 export const maxDuration = 60;
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
     const platformsParam = searchParams.get('platforms');
-    const platforms = platformsParam?.split(',') || ['spotify', 'soundcloud'];
+    const platforms = platformsParam?.split(',') || ['spotify', 'soundcloud', 'yandex'];
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '10'), 20);
 
     if (!query || query.length < 2) {
@@ -94,8 +95,15 @@ export async function GET(request: NextRequest) {
             });
             break;
 
-          case 'vk':
           case 'yandex':
+            const yandexTracks = await searchYandexTracks(query, limit);
+            results.push({
+              platform: 'yandex',
+              tracks: yandexTracks,
+            });
+            break;
+
+          case 'vk':
             // Skip silently if not configured
             console.log(`${platform} not configured, skipping...`);
             break;

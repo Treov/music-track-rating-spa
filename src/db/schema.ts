@@ -28,66 +28,73 @@ export const tracks = sqliteTable('tracks', {
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   username: text('username').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  displayName: text('display_name'),
-  avatarUrl: text('avatar_url'),
+  password_hash: text('password_hash').notNull(),
+  display_name: text('display_name'),
+  avatar_url: text('avatar_url'),
   bio: text('bio'),
   role: text('role').notNull().default('admin'),
-  isVerified: integer('is_verified', { mode: 'boolean' }).notNull().default(false),
-  isBanned: integer('is_banned', { mode: 'boolean' }).notNull().default(false),
-  tracksRatedCount: integer('tracks_rated_count').notNull().default(0),
-  tracksAddedCount: integer('tracks_added_count').notNull().default(0),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
+  is_verified: integer('is_verified', { mode: 'boolean' }).notNull().default(false),
+  is_banned: integer('is_banned', { mode: 'boolean' }).notNull().default(false),
+  tracks_rated_count: integer('tracks_rated_count').notNull().default(0),
+  tracks_added_count: integer('tracks_added_count').notNull().default(0),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
 });
 
 export const userPermissions = sqliteTable('user_permissions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.id),
-  canEditOthersRatings: integer('can_edit_others_ratings', { mode: 'boolean' }).notNull().default(false),
-  canDeleteOthersRatings: integer('can_delete_others_ratings', { mode: 'boolean' }).notNull().default(false),
-  canVerifyArtists: integer('can_verify_artists', { mode: 'boolean' }).notNull().default(true),
-  canAddArtists: integer('can_add_artists', { mode: 'boolean' }).notNull().default(true),
-  canDeleteArtists: integer('can_delete_artists', { mode: 'boolean' }).notNull().default(false),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
+  user_id: integer('user_id').notNull().references(() => users.id),
+  can_edit_others_ratings: integer('can_edit_others_ratings', { mode: 'boolean' }).notNull().default(false),
+  can_delete_others_ratings: integer('can_delete_others_ratings', { mode: 'boolean' }).notNull().default(false),
+  can_verify_artists: integer('can_verify_artists', { mode: 'boolean' }).notNull().default(true),
+  can_add_artists: integer('can_add_artists', { mode: 'boolean' }).notNull().default(true),
+  can_delete_artists: integer('can_delete_artists', { mode: 'boolean' }).notNull().default(false),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
 });
 
 export const awards = sqliteTable('awards', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   description: text('description'),
-  iconUrl: text('icon_url'),
+  icon_url: text('icon_url'),
   color: text('color'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
 });
 
 export const userAwards = sqliteTable('user_awards', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.id),
-  awardId: integer('award_id').notNull().references(() => awards.id),
-  assignedBy: integer('assigned_by').references(() => users.id),
-  assignedAt: text('assigned_at').notNull(),
-  createdAt: text('created_at').notNull(),
+  user_id: integer('user_id').notNull().references(() => users.id),
+  award_id: integer('award_id').notNull().references(() => awards.id),
+  assigned_by: integer('assigned_by').references(() => users.id),
+  assigned_at: text('assigned_at').notNull(),
+  created_at: text('created_at').notNull(),
 });
 
 export const activityLogs = sqliteTable('activity_logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.id),
+  user_id: integer('user_id').notNull().references(() => users.id),
   action: text('action').notNull(),
-  targetType: text('target_type'),
-  targetId: integer('target_id'),
+  target_type: text('target_type'),
+  target_id: integer('target_id'),
   details: text('details'),
-  ipAddress: text('ip_address'),
-  createdAt: text('created_at').notNull(),
+  ip_address: text('ip_address'),
+  created_at: text('created_at').notNull(),
 });
 
 export const socialLinks = sqliteTable('social_links', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id').notNull().references(() => users.id),
+  user_id: integer('user_id').notNull().references(() => users.id),
   platform: text('platform').notNull(),
   url: text('url').notNull(),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
+  created_at: text('created_at').notNull(),
+  updated_at: text('updated_at').notNull(),
+});
+
+export const siteSettings = sqliteTable('site_settings', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+  updated_at: text('updated_at').notNull(),
 });

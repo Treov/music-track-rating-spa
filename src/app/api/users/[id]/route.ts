@@ -28,30 +28,30 @@ export async function GET(
       .select({
         id: users.id,
         username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
+        display_name: users.display_name,
+        avatar_url: users.avatar_url,
         bio: users.bio,
         role: users.role,
-        isVerified: users.isVerified,
-        isBanned: users.isBanned,
-        tracksRatedCount: users.tracksRatedCount,
-        tracksAddedCount: users.tracksAddedCount,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
+        is_verified: users.is_verified,
+        is_banned: users.is_banned,
+        tracks_rated_count: users.tracks_rated_count,
+        tracks_added_count: users.tracks_added_count,
+        created_at: users.created_at,
+        updated_at: users.updated_at,
         permissions: {
           id: userPermissions.id,
-          userId: userPermissions.userId,
-          canEditOthersRatings: userPermissions.canEditOthersRatings,
-          canDeleteOthersRatings: userPermissions.canDeleteOthersRatings,
-          canVerifyArtists: userPermissions.canVerifyArtists,
-          canAddArtists: userPermissions.canAddArtists,
-          canDeleteArtists: userPermissions.canDeleteArtists,
-          createdAt: userPermissions.createdAt,
-          updatedAt: userPermissions.updatedAt,
+          user_id: userPermissions.user_id,
+          can_edit_others_ratings: userPermissions.can_edit_others_ratings,
+          can_delete_others_ratings: userPermissions.can_delete_others_ratings,
+          can_verify_artists: userPermissions.can_verify_artists,
+          can_add_artists: userPermissions.can_add_artists,
+          can_delete_artists: userPermissions.can_delete_artists,
+          created_at: userPermissions.created_at,
+          updated_at: userPermissions.updated_at,
         },
       })
       .from(users)
-      .leftJoin(userPermissions, eq(users.id, userPermissions.userId))
+      .leftJoin(userPermissions, eq(users.id, userPermissions.user_id))
       .where(eq(users.id, userId))
       .limit(1);
 
@@ -68,8 +68,34 @@ export async function GET(
 
     const user = userResult[0];
 
-    // Return user object with permissions, passwordHash is already excluded
-    return NextResponse.json(user, { status: 200 });
+    // Map snake_case to camelCase for response
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url,
+      bio: user.bio,
+      role: user.role,
+      isVerified: user.is_verified,
+      isBanned: user.is_banned,
+      tracksRatedCount: user.tracks_rated_count,
+      tracksAddedCount: user.tracks_added_count,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      permissions: user.permissions.id ? {
+        id: user.permissions.id,
+        userId: user.permissions.user_id,
+        canEditOthersRatings: user.permissions.can_edit_others_ratings,
+        canDeleteOthersRatings: user.permissions.can_delete_others_ratings,
+        canVerifyArtists: user.permissions.can_verify_artists,
+        canAddArtists: user.permissions.can_add_artists,
+        canDeleteArtists: user.permissions.can_delete_artists,
+        createdAt: user.permissions.created_at,
+        updatedAt: user.permissions.updated_at,
+      } : null
+    };
+
+    return NextResponse.json(userResponse, { status: 200 });
   } catch (error) {
     console.error('GET error:', error);
     return NextResponse.json(
@@ -244,25 +270,25 @@ export async function PUT(
       }
     }
 
-    // Build update object with only provided fields
+    // Build update object with only provided fields - use snake_case
     const updates: {
       username?: string;
-      displayName?: string | null;
-      avatarUrl?: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
       bio?: string | null;
-      updatedAt: string;
+      updated_at: string;
     } = {
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     if (username !== undefined) {
       updates.username = username.trim();
     }
     if (displayName !== undefined) {
-      updates.displayName = displayName;
+      updates.display_name = displayName;
     }
     if (avatarUrl !== undefined) {
-      updates.avatarUrl = avatarUrl;
+      updates.avatar_url = avatarUrl;
     }
     if (bio !== undefined) {
       updates.bio = bio;
@@ -273,23 +299,25 @@ export async function PUT(
       .update(users)
       .set(updates)
       .where(eq(users.id, userId))
-      .returning({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-        role: users.role,
-        isVerified: users.isVerified,
-        isBanned: users.isBanned,
-        tracksRatedCount: users.tracksRatedCount,
-        tracksAddedCount: users.tracksAddedCount,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-      });
+      .returning();
 
-    // Return updated user WITHOUT passwordHash
-    return NextResponse.json(updatedUser[0], { status: 200 });
+    // Map snake_case to camelCase for response
+    const userResponse = {
+      id: updatedUser[0].id,
+      username: updatedUser[0].username,
+      displayName: updatedUser[0].display_name,
+      avatarUrl: updatedUser[0].avatar_url,
+      bio: updatedUser[0].bio,
+      role: updatedUser[0].role,
+      isVerified: updatedUser[0].is_verified,
+      isBanned: updatedUser[0].is_banned,
+      tracksRatedCount: updatedUser[0].tracks_rated_count,
+      tracksAddedCount: updatedUser[0].tracks_added_count,
+      createdAt: updatedUser[0].created_at,
+      updatedAt: updatedUser[0].updated_at,
+    };
+
+    return NextResponse.json(userResponse, { status: 200 });
   } catch (error) {
     console.error('PUT error:', error);
     return NextResponse.json(

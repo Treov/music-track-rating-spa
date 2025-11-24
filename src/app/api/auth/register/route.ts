@@ -4,7 +4,7 @@ import { users, userPermissions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 
-const VALID_ROLES = ['super_admin', 'admin', 'moderator'];
+const VALID_ROLES = ['super_admin', 'admin', 'moderator', 'evaluator'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,10 +53,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role if provided
-    const userRole = role || 'admin';
+    const userRole = role || 'evaluator';
     if (!VALID_ROLES.includes(userRole)) {
       return NextResponse.json({
-        error: 'Role must be one of: super_admin, admin, moderator',
+        error: 'Role must be one of: super_admin, admin, moderator, evaluator',
         code: 'INVALID_ROLE'
       }, { status: 400 });
     }
@@ -77,43 +77,57 @@ export async function POST(request: NextRequest) {
     // Hash the password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create the user
+    // Create the user - use snake_case fields
     const timestamp = new Date().toISOString();
     const newUser = await db.insert(users)
       .values({
         username: username.trim(),
-        passwordHash,
-        displayName: displayName?.trim() || null,
-        avatarUrl: null,
+        password_hash: passwordHash,
+        display_name: displayName?.trim() || null,
+        avatar_url: null,
         bio: null,
         role: userRole,
-        isBanned: false,
-        tracksRatedCount: 0,
-        tracksAddedCount: 0,
-        createdAt: timestamp,
-        updatedAt: timestamp
+        is_verified: false,
+        is_banned: false,
+        tracks_rated_count: 0,
+        tracks_added_count: 0,
+        created_at: timestamp,
+        updated_at: timestamp
       })
       .returning();
 
-    // Create default permissions for the new user
+    // Create default permissions for the new user - use snake_case fields
     await db.insert(userPermissions)
       .values({
-        userId: newUser[0].id,
-        canEditOthersRatings: false,
-        canDeleteOthersRatings: false,
-        canVerifyArtists: true,
-        canAddArtists: true,
-        canDeleteArtists: false,
-        createdAt: timestamp,
-        updatedAt: timestamp
+        user_id: newUser[0].id,
+        can_edit_others_ratings: false,
+        can_delete_others_ratings: false,
+        can_verify_artists: true,
+        can_add_artists: true,
+        can_delete_artists: false,
+        created_at: timestamp,
+        updated_at: timestamp
       });
 
-    // Remove passwordHash from response
-    const { passwordHash: _, ...userWithoutPassword } = newUser[0];
+    // Map snake_case to camelCase for response
+    const userResponse = {
+      id: newUser[0].id,
+      username: newUser[0].username,
+      displayName: newUser[0].display_name,
+      avatarUrl: newUser[0].avatar_url,
+      bio: newUser[0].bio,
+      role: newUser[0].role,
+      isVerified: newUser[0].is_verified,
+      isBanned: newUser[0].is_banned,
+      tracksRatedCount: newUser[0].tracks_rated_count,
+      tracksAddedCount: newUser[0].tracks_added_count,
+      createdAt: newUser[0].created_at,
+      updatedAt: newUser[0].updated_at
+    };
 
     return NextResponse.json({
       message: 'User created successfully',
-      user: userWithoutPassword
+      user: userResponse
     }, { status: 201 });
 
   } catch (error) {

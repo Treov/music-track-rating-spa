@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
 
     const user = userResults[0];
 
-    // Verify password
-    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    // Verify password - use snake_case field name
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!passwordMatch) {
       return NextResponse.json(
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is banned
-    if (user.isBanned) {
+    // Check if user is banned - use snake_case field name
+    if (user.is_banned) {
       return NextResponse.json(
         { 
           error: 'Your account has been banned',
@@ -83,13 +83,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Remove passwordHash from response
-    const { passwordHash, ...userWithoutPassword } = user;
+    // Map snake_case to camelCase for response
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url,
+      bio: user.bio,
+      role: user.role,
+      isVerified: user.is_verified,
+      isBanned: user.is_banned,
+      tracksRatedCount: user.tracks_rated_count,
+      tracksAddedCount: user.tracks_added_count,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
 
     return NextResponse.json(
       {
         message: 'Login successful',
-        user: userWithoutPassword
+        user: userResponse
       },
       { status: 200 }
     );
