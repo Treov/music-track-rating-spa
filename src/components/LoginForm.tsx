@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Music2, Loader2, LogIn, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,23 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [eventName, setEventName] = useState("HOSPITAL TOURNAMENT");
+
+  useEffect(() => {
+    fetchEventName();
+  }, []);
+
+  const fetchEventName = async () => {
+    try {
+      const response = await fetch("/api/settings/eventName");
+      if (response.ok) {
+        const data = await response.json();
+        setEventName(data.value);
+      }
+    } catch (error) {
+      console.error("Error fetching event name:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +67,7 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
       // Save session with full user data including permissions
       const sessionData = {
         user: data.user,
-        loginTime: Date.now(),
-        expiresAt: Date.now() + 60 * 60 * 1000 // 1 hour
+        loginTime: Date.now()
       };
       
       localStorage.setItem("music_app_session", JSON.stringify(sessionData));
@@ -89,7 +105,7 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
             </h1>
           </div>
           <p className="text-muted-foreground">
-            HOSPITAL TOURNAMENT
+            {eventName}
           </p>
         </div>
 
@@ -153,13 +169,6 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
               )}
             </Button>
           </form>
-
-          {/* Footer Info */}
-          <div className="mt-6 pt-6 border-t border-border/50">
-            <p className="text-xs text-center text-muted-foreground">
-              Сессия действительна 1 час после входа
-            </p>
-          </div>
         </div>
 
         {/* Bottom Text */}

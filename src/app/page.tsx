@@ -81,10 +81,9 @@ export default function Home() {
     if (sessionData) {
       try {
         const session = JSON.parse(sessionData);
-        const now = Date.now();
         
-        // Check if session is expired (1 hour)
-        if (session.expiresAt && now < session.expiresAt && session.user) {
+        // Check if session has user data (no expiration check)
+        if (session.user && session.user.id) {
           // Fetch fresh user data with permissions
           const response = await fetch(`/api/users/${session.user.id}`);
           if (response.ok) {
@@ -98,11 +97,10 @@ export default function Home() {
             setCurrentUser(null);
           }
         } else {
-          // Session expired
+          // No user data in session
           localStorage.removeItem("music_app_session");
           setIsAuthenticated(false);
           setCurrentUser(null);
-          toast.error("Сессия истекла. Пожалуйста, войдите снова.");
         }
       } catch (error) {
         localStorage.removeItem("music_app_session");
@@ -118,12 +116,14 @@ export default function Home() {
   };
 
   const handleLoginSuccess = async () => {
-    // First hide login form
+    // First hide login form and set animating to false
     setShowLogin(false);
     setIsAnimating(false);
     
-    // Then refresh auth state
-    await checkAuth();
+    // Wait for state to settle and refresh auth
+    setTimeout(async () => {
+      await checkAuth();
+    }, 100);
   };
 
   const handleShowLogin = () => {
