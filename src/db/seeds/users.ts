@@ -1,42 +1,44 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import * as bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 async function main() {
-    const currentDate = new Date().toISOString();
+    await db.delete(users);
+
+    const currentTimestamp = new Date().toISOString();
 
     const sampleUsers = [
         {
             username: 'ventoanda',
-            passwordHash: bcrypt.hashSync('20162016', 10),
-            displayName: 'Vento Anda',
-            avatarUrl: null,
-            bio: null,
+            password_hash: bcrypt.hashSync('20162016', 10),
+            display_name: 'Vento Anda',
+            avatar_url: null,
+            bio: 'Super administrator with full system access',
             role: 'super_admin',
-            isVerified: true,
-            isBanned: false,
-            tracksRatedCount: 0,
-            tracksAddedCount: 0,
-            createdAt: currentDate,
-            updatedAt: currentDate,
+            is_verified: true,
+            is_banned: false,
+            tracks_rated_count: 0,
+            tracks_added_count: 0,
+            created_at: currentTimestamp,
+            updated_at: currentTimestamp,
         },
         {
             username: 'pumkingott',
-            passwordHash: bcrypt.hashSync('sound2025', 10),
-            displayName: 'Pumkin Gott',
-            avatarUrl: null,
-            bio: null,
+            password_hash: bcrypt.hashSync('sound2025', 10),
+            display_name: 'Pumkin Gott',
+            avatar_url: null,
+            bio: 'Super administrator with full system access',
             role: 'super_admin',
-            isVerified: true,
-            isBanned: false,
-            tracksRatedCount: 0,
-            tracksAddedCount: 0,
-            createdAt: currentDate,
-            updatedAt: currentDate,
-        },
+            is_verified: true,
+            is_banned: false,
+            tracks_rated_count: 0,
+            tracks_added_count: 0,
+            created_at: currentTimestamp,
+            updated_at: currentTimestamp,
+        }
     ];
 
-    await db.insert(users).values(sampleUsers).returning();
+    await db.insert(users).values(sampleUsers);
     
     console.log('✅ Users seeder completed successfully');
 }
