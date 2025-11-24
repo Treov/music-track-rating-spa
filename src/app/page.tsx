@@ -117,13 +117,13 @@ export default function Home() {
     setCheckingAuth(false);
   };
 
-  const handleLoginSuccess = () => {
-    checkAuth();
-    setIsAnimating(true);
-    setTimeout(() => {
-      setShowLogin(false);
-      setIsAnimating(false);
-    }, 300);
+  const handleLoginSuccess = async () => {
+    // First hide login form
+    setShowLogin(false);
+    setIsAnimating(false);
+    
+    // Then refresh auth state
+    await checkAuth();
   };
 
   const handleShowLogin = () => {
