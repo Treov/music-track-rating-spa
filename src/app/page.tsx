@@ -116,11 +116,26 @@ export default function Home() {
   };
 
   const handleLoginSuccess = async () => {
-    // First hide login form and set animating to false
+    // Immediately read session from localStorage and update state
+    const sessionData = localStorage.getItem("music_app_session");
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        if (session.user && session.user.id) {
+          // Set user data immediately from session
+          setCurrentUser(session.user);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Error parsing session:", error);
+      }
+    }
+    
+    // Hide login form
     setShowLogin(false);
     setIsAnimating(false);
     
-    // Wait for state to settle and refresh auth
+    // Then fetch fresh user data in background
     setTimeout(async () => {
       await checkAuth();
     }, 100);

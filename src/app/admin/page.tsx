@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, UserPlus, Loader2, Shield, User as UserIcon, Activity, Award } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, Shield, User as UserIcon, Activity, Award, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,11 +44,11 @@ export default function AdminPage() {
 
     try {
       const session = JSON.parse(sessionData);
-      const now = Date.now();
       
-      if (!session.expiresAt || now >= session.expiresAt || !session.user) {
+      // Check if session has user data (no expiration check)
+      if (!session.user || !session.user.id) {
         localStorage.removeItem("music_app_session");
-        toast.error("Сессия истекла");
+        toast.error("Сессия недействительна");
         router.push("/");
         return;
       }
@@ -180,7 +180,7 @@ export default function AdminPage() {
         </div>
 
         {/* Quick Navigation */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Link href="/evaluators">
             <div className="glass-card rounded-xl p-6 hover:scale-105 transition-all cursor-pointer">
               <UserIcon className="w-8 h-8 text-primary mb-3" />
@@ -207,6 +207,16 @@ export default function AdminPage() {
               <h3 className="font-semibold mb-1">Награды</h3>
               <p className="text-sm text-muted-foreground">
                 Создание и присвоение наград
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/admin/settings">
+            <div className="glass-card rounded-xl p-6 hover:scale-105 transition-all cursor-pointer">
+              <SettingsIcon className="w-8 h-8 text-green-500 mb-3" />
+              <h3 className="font-semibold mb-1">Настройки</h3>
+              <p className="text-sm text-muted-foreground">
+                Настройки сайта и события
               </p>
             </div>
           </Link>

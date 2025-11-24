@@ -82,7 +82,7 @@ export async function GET(
       tracksAddedCount: user.tracks_added_count,
       createdAt: user.created_at,
       updatedAt: user.updated_at,
-      permissions: user.permissions.id ? {
+      permissions: user.permissions && user.permissions.id ? {
         id: user.permissions.id,
         userId: user.permissions.user_id,
         canEditOthersRatings: user.permissions.can_edit_others_ratings,
