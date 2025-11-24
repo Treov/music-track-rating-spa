@@ -3,6 +3,10 @@ import { db } from '@/db';
 import { tracks, artists } from '@/db/schema';
 import { eq, like } from 'drizzle-orm';
 
+// Configure runtime for Next.js 15 App Router
+export const maxDuration = 60; // seconds
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -16,6 +20,7 @@ export async function GET(request: NextRequest) {
         title: tracks.title,
         artistId: tracks.artistId,
         albumArt: tracks.albumArt,
+        audioUrl: tracks.audioUrl,
         vocals: tracks.vocals,
         production: tracks.production,
         lyrics: tracks.lyrics,
@@ -52,6 +57,7 @@ export async function POST(request: NextRequest) {
       title,
       artistId,
       albumArt,
+      audioUrl,
       vocals,
       production,
       lyrics,
@@ -60,7 +66,6 @@ export async function POST(request: NextRequest) {
       notes,
     } = body;
 
-    // Validate required fields
     if (!title || typeof title !== 'string' || title.trim() === '') {
       return NextResponse.json(
         {
@@ -81,7 +86,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate rating fields
     const ratingFields = [
       { name: 'vocals', value: vocals },
       { name: 'production', value: production },
@@ -109,7 +113,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate artistId exists
     const artistExists = await db
       .select()
       .from(artists)
@@ -126,7 +129,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new track
+    // Check for duplicate track (same title and artist)
+    const duplicateTrack = await db
+      .select()
+      .from(tracks)
+      .where(eq(tracks.artistId, artistId))
+      .limit(100); // Get all tracks for this artist
+    
+    const titleLower = title.trim().toLowerCase();
+    const isDuplicate = duplicateTrack.some(
+      track => track.title.toLowerCase() === titleLower
+    );
+
+    if (isDuplicate) {
+      return NextResponse.json(
+        {
+          error: 'Track with this title already exists for this artist',
+          code: 'DUPLICATE_TRACK',
+        },
+        { status: 400 }
+      );
+    }
+
     const now = new Date().toISOString();
     const newTrack = await db
       .insert(tracks)
@@ -134,6 +158,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         artistId,
         albumArt: albumArt || null,
+        audioUrl: audioUrl || null,
         vocals,
         production,
         lyrics,

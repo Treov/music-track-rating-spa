@@ -38,6 +38,7 @@ export default function Home() {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [topArtists, setTopArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [topLoading, setTopLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,6 +47,9 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [eventName, setEventName] = useState("HOSPITAL TOURNAMENT");
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
+  const LIMIT = 12;
   
   // Top artists filters
   const [showTop, setShowTop] = useState(false);
@@ -145,22 +149,51 @@ export default function Home() {
     toast.success("Вы вышли из системы");
   };
 
-  const fetchArtists = async () => {
+  const fetchArtists = async (reset: boolean = true) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setOffset(0);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const currentOffset = reset ? 0 : offset;
       const params = new URLSearchParams();
       if (search) params.append("search", search);
+      params.append("limit", LIMIT.toString());
+      params.append("offset", currentOffset.toString());
       
       const response = await fetch(`/api/artists?${params}`);
       if (!response.ok) throw new Error("Ошибка загрузки");
       
       const data = await response.json();
-      setArtists(data);
+      
+      if (reset) {
+        setArtists(data);
+      } else {
+        setArtists(prev => [...prev, ...data]);
+      }
+      
+      // Check if there are more artists to load
+      if (data.length < LIMIT) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+        setOffset(currentOffset + LIMIT);
+      }
     } catch (error) {
       console.error("Error fetching artists:", error);
+      toast.error("Ошибка загрузки исполнителей");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    fetchArtists(false);
   };
 
   const fetchTopArtists = async () => {
@@ -186,7 +219,7 @@ export default function Home() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchArtists();
+      fetchArtists(true);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -456,8 +489,8 @@ export default function Home() {
               <div className="flex gap-2">
                 {isAuthenticated && canAddArtists && (
                   <>
-                    <GlobalMusicSearch onTrackAdded={fetchArtists} currentUser={currentUser!} />
-                    <AddArtistDialog onArtistAdded={fetchArtists} />
+                    <GlobalMusicSearch onTrackAdded={() => fetchArtists(true)} currentUser={currentUser!} />
+                    <AddArtistDialog onArtistAdded={() => fetchArtists(true)} />
                   </>
                 )}
               </div>
@@ -479,23 +512,50 @@ export default function Home() {
                   : "Добавьте первого артиста, чтобы начать оценивать треки."}
               </p>
               {!search && isAuthenticated && canAddArtists && (
-                <AddArtistDialog onArtistAdded={fetchArtists} />
+                <AddArtistDialog onArtistAdded={() => fetchArtists(true)} />
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {artists.map((artist) => (
-                <ArtistCard
-                  key={artist.id}
-                  artist={artist}
-                  onDelete={fetchArtists}
-                  onVerify={fetchArtists}
-                  isAdmin={isAuthenticated}
-                  canVerify={canVerifyArtists}
-                  currentUser={currentUser}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {artists.map((artist) => (
+                  <ArtistCard
+                    key={artist.id}
+                    artist={artist}
+                    onDelete={() => fetchArtists(true)}
+                    onVerify={() => fetchArtists(true)}
+                    isAdmin={isAuthenticated}
+                    canVerify={canVerifyArtists}
+                    currentUser={currentUser}
+                  />
+                ))}
+              </div>
+              
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="flex justify-center mt-8">
+                  <Button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="glass-card border-border hover:border-primary/50 px-8"
+                    variant="outline"
+                    size="lg"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Загрузка...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-5 h-5 mr-2" />
+                        Загрузить еще
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
