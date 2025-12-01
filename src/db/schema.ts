@@ -3,6 +3,7 @@ import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
 export const artists = sqliteTable('artists', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
+  slug: text('slug').notNull().unique(),
   imageUrl: text('image_url'),
   verified: integer('verified').default(0).notNull(),
   createdAt: text('created_at').notNull(),

@@ -1,6 +1,7 @@
 export interface Artist {
   id: number;
   name: string;
+  slug: string;
   imageUrl: string | null;
   verified: number;
   createdAt: string;

@@ -5,21 +5,32 @@ import { eq, and, ne } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const id = request.nextUrl.pathname.split('/').pop();
+    const idOrSlug = request.nextUrl.pathname.split('/').pop();
     
-    if (!id || isNaN(parseInt(id))) {
+    if (!idOrSlug || idOrSlug.trim() === '') {
       return NextResponse.json({ 
-        error: "Valid ID is required",
+        error: "Valid ID or slug is required",
         code: "INVALID_ID" 
       }, { status: 400 });
     }
 
-    const artistId = parseInt(id);
-
-    const artist = await db.select()
-      .from(artists)
-      .where(eq(artists.id, artistId))
-      .limit(1);
+    // Determine if it's numeric ID or slug
+    const isNumeric = !isNaN(parseInt(idOrSlug)) && parseInt(idOrSlug).toString() === idOrSlug;
+    
+    let artist;
+    if (isNumeric) {
+      // Lookup by ID
+      artist = await db.select()
+        .from(artists)
+        .where(eq(artists.id, parseInt(idOrSlug)))
+        .limit(1);
+    } else {
+      // Lookup by slug
+      artist = await db.select()
+        .from(artists)
+        .where(eq(artists.slug, idOrSlug))
+        .limit(1);
+    }
 
     if (artist.length === 0) {
       return NextResponse.json({ 
@@ -30,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     const artistTracks = await db.select()
       .from(tracks)
-      .where(eq(tracks.artistId, artistId));
+      .where(eq(tracks.artistId, artist[0].id));
 
     return NextResponse.json({
       ...artist[0],
@@ -47,21 +58,30 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const id = request.nextUrl.pathname.split('/').pop();
+    const idOrSlug = request.nextUrl.pathname.split('/').pop();
     
-    if (!id || isNaN(parseInt(id))) {
+    if (!idOrSlug || idOrSlug.trim() === '') {
       return NextResponse.json({ 
-        error: "Valid ID is required",
+        error: "Valid ID or slug is required",
         code: "INVALID_ID" 
       }, { status: 400 });
     }
 
-    const artistId = parseInt(id);
-
-    const existingArtist = await db.select()
-      .from(artists)
-      .where(eq(artists.id, artistId))
-      .limit(1);
+    // Determine if it's numeric ID or slug
+    const isNumeric = !isNaN(parseInt(idOrSlug)) && parseInt(idOrSlug).toString() === idOrSlug;
+    
+    let existingArtist;
+    if (isNumeric) {
+      existingArtist = await db.select()
+        .from(artists)
+        .where(eq(artists.id, parseInt(idOrSlug)))
+        .limit(1);
+    } else {
+      existingArtist = await db.select()
+        .from(artists)
+        .where(eq(artists.slug, idOrSlug))
+        .limit(1);
+    }
 
     if (existingArtist.length === 0) {
       return NextResponse.json({ 
@@ -70,8 +90,10 @@ export async function PUT(request: NextRequest) {
       }, { status: 404 });
     }
 
+    const artistId = existingArtist[0].id;
+
     const body = await request.json();
-    const { name, imageUrl } = body;
+    const { name, imageUrl, verified } = body;
 
     const updates: any = {
       updatedAt: new Date().toISOString()
@@ -103,10 +125,30 @@ export async function PUT(request: NextRequest) {
       }
 
       updates.name = trimmedName;
+      
+      // Generate slug from name
+      const slug = trimmedName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      updates.slug = slug;
     }
 
     if (imageUrl !== undefined) {
       updates.imageUrl = imageUrl;
+    }
+
+    if (verified !== undefined) {
+      if (typeof verified !== 'number' || (verified !== 0 && verified !== 1)) {
+        return NextResponse.json({ 
+          error: "Verified must be 0 or 1",
+          code: "INVALID_VERIFIED" 
+        }, { status: 400 });
+      }
+      updates.verified = verified;
     }
 
     const updated = await db.update(artists)
@@ -126,21 +168,30 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const id = request.nextUrl.pathname.split('/').pop();
+    const idOrSlug = request.nextUrl.pathname.split('/').pop();
     
-    if (!id || isNaN(parseInt(id))) {
+    if (!idOrSlug || idOrSlug.trim() === '') {
       return NextResponse.json({ 
-        error: "Valid ID is required",
+        error: "Valid ID or slug is required",
         code: "INVALID_ID" 
       }, { status: 400 });
     }
 
-    const artistId = parseInt(id);
-
-    const existingArtist = await db.select()
-      .from(artists)
-      .where(eq(artists.id, artistId))
-      .limit(1);
+    // Determine if it's numeric ID or slug
+    const isNumeric = !isNaN(parseInt(idOrSlug)) && parseInt(idOrSlug).toString() === idOrSlug;
+    
+    let existingArtist;
+    if (isNumeric) {
+      existingArtist = await db.select()
+        .from(artists)
+        .where(eq(artists.id, parseInt(idOrSlug)))
+        .limit(1);
+    } else {
+      existingArtist = await db.select()
+        .from(artists)
+        .where(eq(artists.slug, idOrSlug))
+        .limit(1);
+    }
 
     if (existingArtist.length === 0) {
       return NextResponse.json({ 
@@ -148,6 +199,8 @@ export async function DELETE(request: NextRequest) {
         code: 'ARTIST_NOT_FOUND' 
       }, { status: 404 });
     }
+
+    const artistId = existingArtist[0].id;
 
     const artistTracks = await db.select()
       .from(tracks)

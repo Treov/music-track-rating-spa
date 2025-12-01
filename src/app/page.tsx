@@ -56,6 +56,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'tracks' | 'rating'>('rating');
   const [minTracks, setMinTracks] = useState<string>('0');
   const [minRating, setMinRating] = useState<string>('0');
+  const [timePeriod, setTimePeriod] = useState<'day' | 'week' | 'month' | 'all'>('all');
 
   // Check authentication on mount
   useEffect(() => {
@@ -217,6 +218,7 @@ export default function Home() {
       const params = new URLSearchParams();
       params.append("sortBy", sortBy);
       params.append("limit", "10");
+      params.append("timePeriod", timePeriod);
       if (minTracks) params.append("minTracks", minTracks);
       if (minRating) params.append("minRating", minRating);
       
@@ -244,7 +246,7 @@ export default function Home() {
     if (showTop) {
       fetchTopArtists();
     }
-  }, [sortBy, minTracks, minRating, showTop]);
+  }, [sortBy, minTracks, minRating, timePeriod, showTop]);
 
   const isCEO = currentUser?.role === "super_admin";
   const canAddArtists = currentUser?.permissions?.canAddArtists || isCEO;
@@ -437,6 +439,20 @@ export default function Home() {
                     placeholder="0"
                   />
                 </div>
+                <div className="flex-1">
+                  <label className="text-sm text-muted-foreground mb-2 block">Период</label>
+                  <Select value={timePeriod} onValueChange={(value: 'day' | 'week' | 'month' | 'all') => setTimePeriod(value)}>
+                    <SelectTrigger className="glass-card border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">Сегодня</SelectItem>
+                      <SelectItem value="week">Неделя</SelectItem>
+                      <SelectItem value="month">Месяц</SelectItem>
+                      <SelectItem value="all">Все время</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Top Artists Grid */}
@@ -452,7 +468,7 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   {topArtists.map((artist, index) => (
-                    <Link key={artist.id} href={`/artist/${artist.id}`}>
+                    <Link key={artist.id} href={`/artist/${artist.slug}`}>
                       <div className="glass-card rounded-xl p-4 hover:scale-105 transition-all cursor-pointer">
                         <div className="flex items-center gap-3 mb-3">
                           <div className="text-2xl font-bold text-primary">#{index + 1}</div>

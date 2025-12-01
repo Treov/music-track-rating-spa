@@ -12,11 +12,35 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy'); // 'tracks' or 'rating'
     const minTracks = parseInt(searchParams.get('minTracks') ?? '0');
     const minRating = parseFloat(searchParams.get('minRating') ?? '0');
+    const timePeriod = searchParams.get('timePeriod'); // 'day', 'week', 'month', 'all'
+
+    // Calculate date filter based on time period
+    let dateFilter = '';
+    if (timePeriod && timePeriod !== 'all') {
+      const now = new Date();
+      let daysAgo = 0;
+      
+      switch (timePeriod) {
+        case 'day':
+          daysAgo = 1;
+          break;
+        case 'week':
+          daysAgo = 7;
+          break;
+        case 'month':
+          daysAgo = 30;
+          break;
+      }
+      
+      const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      dateFilter = cutoffDate.toISOString();
+    }
 
     let query = db
       .select({
         id: artists.id,
         name: artists.name,
+        slug: artists.slug,
         imageUrl: artists.imageUrl,
         verified: artists.verified,
         createdAt: artists.createdAt,
@@ -26,7 +50,10 @@ export async function GET(request: NextRequest) {
         totalRating: sql<number>`ROUND(CAST(SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0 AS REAL), 2)`,
       })
       .from(artists)
-      .leftJoin(tracks, eq(artists.id, tracks.artistId))
+      .leftJoin(tracks, dateFilter 
+        ? sql`${artists.id} = ${tracks.artistId} AND ${tracks.createdAt} >= ${dateFilter}`
+        : eq(artists.id, tracks.artistId)
+      )
       .groupBy(artists.id)
       .$dynamic();
 
@@ -95,9 +122,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate slug from name
+    const slug = trimmedName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+
     const now = new Date().toISOString();
     const insertData = {
       name: trimmedName,
+      slug: slug,
       imageUrl: imageUrl || null,
       verified: 0,
       createdAt: now,

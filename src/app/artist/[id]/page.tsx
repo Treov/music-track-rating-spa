@@ -18,7 +18,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 export default function ArtistPage() {
   const params = useParams();
   const router = useRouter();
-  const artistId = parseInt(params.id as string);
+  const artistIdOrSlug = params.id as string;
 
   const [artist, setArtist] = useState<Artist | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -33,7 +33,7 @@ export default function ArtistPage() {
 
   const [formData, setFormData] = useState<TrackFormData>({
     title: "",
-    artistId,
+    artistId: 0,
     albumArt: "",
     audioUrl: "",
     vocals: 5,
@@ -50,8 +50,8 @@ export default function ArtistPage() {
     if (sessionData) {
       try {
         const session = JSON.parse(sessionData);
-        const now = Date.now();
-        if (session.expiresAt && now < session.expiresAt) {
+        // Check if session has user data (no expiration check)
+        if (session.user && session.user.id) {
           setIsAuthenticated(true);
         }
       } catch (error) {
@@ -63,12 +63,18 @@ export default function ArtistPage() {
   const fetchArtist = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/artists/${artistId}`);
+      const response = await fetch(`/api/artists/${artistIdOrSlug}`);
       if (!response.ok) throw new Error("Артист не найден");
       
       const data = await response.json();
       setArtist(data);
       setTracks(data.tracks || []);
+      
+      // Update formData with correct artistId after fetch
+      setFormData(prev => ({
+        ...prev,
+        artistId: data.id
+      }));
     } catch (error) {
       toast.error("Ошибка загрузки артиста");
       router.push("/");
@@ -78,10 +84,10 @@ export default function ArtistPage() {
   };
 
   useEffect(() => {
-    if (!isNaN(artistId)) {
+    if (artistIdOrSlug) {
       fetchArtist();
     }
-  }, [artistId]);
+  }, [artistIdOrSlug]);
 
   const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,7 +149,7 @@ export default function ArtistPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: formData.title.trim(),
-          artistId,
+          artistId: artist?.id,
           albumArt: formData.albumArt || null,
           audioUrl: audioUrl || null,
           vocals: formData.vocals,
@@ -181,7 +187,7 @@ export default function ArtistPage() {
       toast.success("Трек добавлен!");
       setFormData({
         title: "",
-        artistId,
+        artistId: artist?.id || 0,
         albumArt: "",
         audioUrl: "",
         vocals: 5,
@@ -352,7 +358,7 @@ export default function ArtistPage() {
                   <Plus className="w-6 h-6" />
                   Добавить трек
                 </h2>
-                <MusicPlatformSearch artistId={artistId} onTrackAdded={fetchArtist} />
+                <MusicPlatformSearch artistId={artistIdOrSlug} onTrackAdded={fetchArtist} />
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">

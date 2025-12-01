@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Link from "next/link";
 
+interface UserAward {
+  id: number;
+  awardId: number;
+  name: string;
+  description: string | null;
+  iconUrl: string | null;
+  color: string | null;
+  assignedAt: string;
+}
+
 interface UserWithPermissions {
   id: number;
   username: string;
@@ -18,6 +28,7 @@ interface UserWithPermissions {
   isBanned: boolean;
   tracksRatedCount: number;
   tracksAddedCount: number;
+  awards?: UserAward[];
   permissions: {
     canEditOthersRatings: boolean;
     canDeleteOthersRatings: boolean;
@@ -63,9 +74,9 @@ export default function EvaluatorsPage() {
     if (sessionData) {
       try {
         const session = JSON.parse(sessionData);
-        const now = Date.now();
         
-        if (session.expiresAt && now < session.expiresAt && session.user) {
+        // Check if session has user data (no expiration check)
+        if (session.user && session.user.id) {
           setCurrentUser(session.user);
         }
       } catch (error) {
@@ -82,9 +93,16 @@ export default function EvaluatorsPage() {
       }
 
       const data = await response.json();
+      
+      // Filter to show only evaluators, moderators, admins, and CEOs
+      const evaluatorRoles = ['evaluator', 'moderator', 'admin', 'super_admin'];
+      const evaluators = data.filter((user: UserWithPermissions) => 
+        evaluatorRoles.includes(user.role)
+      );
+      
       // Sort by role (ceo first, then admin, then moderator, then evaluator) and then by tracksRatedCount
-      const roleOrder = { ceo: 0, admin: 1, moderator: 2, evaluator: 3 };
-      const sorted = data.sort((a: UserWithPermissions, b: UserWithPermissions) => {
+      const roleOrder = { super_admin: 0, admin: 1, moderator: 2, evaluator: 3 };
+      const sorted = evaluators.sort((a: UserWithPermissions, b: UserWithPermissions) => {
         const aOrder = roleOrder[a.role as keyof typeof roleOrder] ?? 999;
         const bOrder = roleOrder[b.role as keyof typeof roleOrder] ?? 999;
         if (aOrder !== bOrder) return aOrder - bOrder;
@@ -102,7 +120,7 @@ export default function EvaluatorsPage() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case "ceo": return <Crown className="w-5 h-5 text-yellow-500" />;
+      case "super_admin": return <Crown className="w-5 h-5 text-yellow-500" />;
       case "admin": return <Shield className="w-5 h-5 text-primary" />;
       case "moderator": return <Award className="w-5 h-5 text-blue-500" />;
       case "evaluator": return <User className="w-5 h-5 text-green-500" />;
@@ -112,7 +130,7 @@ export default function EvaluatorsPage() {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case "ceo": return "CEO";
+      case "super_admin": return "CEO";
       case "admin": return "Администратор";
       case "moderator": return "Модератор";
       case "evaluator": return "Оценщик";
@@ -120,7 +138,7 @@ export default function EvaluatorsPage() {
     }
   };
 
-  const isCEO = currentUser?.role === "ceo";
+  const isCEO = currentUser?.role === "super_admin";
 
   if (loading) {
     return (
@@ -149,7 +167,7 @@ export default function EvaluatorsPage() {
             Оценщики
           </h1>
           <p className="text-muted-foreground mb-6">
-            Список всех участников проекта и их статистика
+            Список всех оценщиков и их статистика
           </p>
 
           <div className="relative">
@@ -210,7 +228,7 @@ export default function EvaluatorsPage() {
               {/* Role Badge */}
               <div className="mb-4 flex gap-2 flex-wrap">
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                  user.role === "ceo" ? "bg-yellow-500/20 text-yellow-500" :
+                  user.role === "super_admin" ? "bg-yellow-500/20 text-yellow-500" :
                   user.role === "admin" ? "bg-primary/20 text-primary" :
                   user.role === "moderator" ? "bg-blue-500/20 text-blue-500" :
                   user.role === "evaluator" ? "bg-green-500/20 text-green-500" :
@@ -236,6 +254,32 @@ export default function EvaluatorsPage() {
                   <span className="font-semibold">{user.tracksAddedCount}</span>
                 </div>
               </div>
+
+              {/* Awards */}
+              {user.awards && user.awards.length > 0 && (
+                <div className="mb-4 pb-4 border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Награды:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {user.awards.map((award) => (
+                      <div
+                        key={award.id}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg"
+                        style={{ backgroundColor: `${award.color || '#9333ea'}20` }}
+                        title={award.description || award.name}
+                      >
+                        {award.iconUrl ? (
+                          <img src={award.iconUrl} alt={award.name} className="w-4 h-4" />
+                        ) : (
+                          <Award className="w-4 h-4" style={{ color: award.color || '#9333ea' }} />
+                        )}
+                        <span className="text-xs font-medium" style={{ color: award.color || '#9333ea' }}>
+                          {award.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-2">

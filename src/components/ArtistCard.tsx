@@ -127,7 +127,7 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin, canVer
           isDeleting ? 'opacity-0 scale-95 -translate-y-4' : 'opacity-100 scale-100 translate-y-0'
         }`}
       >
-        <Link href={`/artist/${artist.id}`} className="block">
+        <Link href={`/artist/${artist.slug}`} className="block">
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
               {artist.imageUrl ? (

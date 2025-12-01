@@ -118,7 +118,7 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Input */}
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium text-foreground">
+              <label htmlFor="username" className="text-sm font-medium text-foreground block mb-1">
                 Логин
               </label>
               <Input
@@ -135,7 +135,7 @@ export default function LoginForm({ onLoginSuccess, onBack }: LoginFormProps) {
 
             {/* Password Input */}
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
+              <label htmlFor="password" className="text-sm font-medium text-foreground block mb-1">
                 Пароль
               </label>
               <Input
