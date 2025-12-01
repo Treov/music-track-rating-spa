@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users, userPermissions } from '@/db/schema';
+import { users, userAwards, awards } from '@/db/schema';
 import { eq, like, and, or, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -16,36 +16,7 @@ export async function GET(request: NextRequest) {
     const role = searchParams.get('role');
     const bannedParam = searchParams.get('banned');
     
-    // Build the base query with LEFT JOIN
-    let query = db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-        bio: users.bio,
-        role: users.role,
-        isBanned: users.isBanned,
-        tracksRatedCount: users.tracksRatedCount,
-        tracksAddedCount: users.tracksAddedCount,
-        createdAt: users.createdAt,
-        updatedAt: users.updatedAt,
-        permissions: {
-          id: userPermissions.id,
-          userId: userPermissions.userId,
-          canEditOthersRatings: userPermissions.canEditOthersRatings,
-          canDeleteOthersRatings: userPermissions.canDeleteOthersRatings,
-          canVerifyArtists: userPermissions.canVerifyArtists,
-          canAddArtists: userPermissions.canAddArtists,
-          canDeleteArtists: userPermissions.canDeleteArtists,
-          createdAt: userPermissions.createdAt,
-          updatedAt: userPermissions.updatedAt,
-        }
-      })
-      .from(users)
-      .leftJoin(userPermissions, eq(users.id, userPermissions.userId));
-
-    // Build WHERE conditions
+    // Build WHERE conditions for users
     const conditions = [];
     
     // Search condition
@@ -69,41 +40,68 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(users.isBanned, isBanned));
     }
     
-    // Apply WHERE conditions if any exist
+    // Fetch users
+    let usersQuery = db.select().from(users);
+    
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      usersQuery = usersQuery.where(and(...conditions));
     }
     
-    // Apply ordering, limit, and offset
-    const results = await query
-      .orderBy(desc(users.createdAt))
+    const usersResult = await usersQuery
+      .orderBy(desc(users.id))
       .limit(limit)
       .offset(offset);
     
-    // Transform results to handle null permissions and structure response
-    const formattedResults = results.map(row => ({
-      id: row.id,
-      username: row.username,
-      displayName: row.displayName,
-      avatarUrl: row.avatarUrl,
-      bio: row.bio,
-      role: row.role,
-      isBanned: row.isBanned,
-      tracksRatedCount: row.tracksRatedCount,
-      tracksAddedCount: row.tracksAddedCount,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      permissions: row.permissions.id ? {
-        id: row.permissions.id,
-        userId: row.permissions.userId,
-        canEditOthersRatings: row.permissions.canEditOthersRatings,
-        canDeleteOthersRatings: row.permissions.canDeleteOthersRatings,
-        canVerifyArtists: row.permissions.canVerifyArtists,
-        canAddArtists: row.permissions.canAddArtists,
-        canDeleteArtists: row.permissions.canDeleteArtists,
-        createdAt: row.permissions.createdAt,
-        updatedAt: row.permissions.updatedAt,
-      } : null
+    // Fetch awards
+    const awardsByUser: Record<number, any[]> = {};
+    try {
+      const allUserAwards = await db
+        .select({
+          userId: userAwards.userId,
+          awardId: userAwards.awardId,
+          assignedAt: userAwards.assignedAt,
+          name: awards.name,
+          description: awards.description,
+          iconUrl: awards.iconUrl,
+          color: awards.color,
+        })
+        .from(userAwards)
+        .innerJoin(awards, eq(userAwards.awardId, awards.id));
+      
+      for (const award of allUserAwards) {
+        if (!awardsByUser[award.userId]) {
+          awardsByUser[award.userId] = [];
+        }
+        awardsByUser[award.userId].push({
+          id: award.awardId,
+          awardId: award.awardId,
+          name: award.name,
+          description: award.description,
+          iconUrl: award.iconUrl,
+          color: award.color,
+          assignedAt: award.assignedAt,
+        });
+      }
+    } catch (awardsError) {
+      console.error('Error fetching awards:', awardsError);
+    }
+    
+    // Combine results
+    const formattedResults = usersResult.map(user => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      bio: user.bio,
+      role: user.role,
+      isVerified: user.isVerified,
+      isBanned: user.isBanned,
+      tracksRatedCount: user.tracksRatedCount,
+      tracksAddedCount: user.tracksAddedCount,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      awards: awardsByUser[user.id] || [],
+      permissions: null
     }));
     
     return NextResponse.json(formattedResults, { status: 200 });
