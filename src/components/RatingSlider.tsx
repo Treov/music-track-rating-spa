@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 
@@ -13,33 +13,54 @@ interface RatingSliderProps {
 
 export default function RatingSlider({ label, value, onChange, icon }: RatingSliderProps) {
   const [displayValue, setDisplayValue] = useState(value);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     if (displayValue !== value) {
-      setIsAnimating(true);
-      
-      // Animate the number change
-      const duration = 200; // ms
-      const steps = 10;
-      const stepValue = (value - displayValue) / steps;
-      const stepDuration = duration / steps;
-      
-      let currentStep = 0;
-      const interval = setInterval(() => {
-        currentStep++;
-        if (currentStep >= steps) {
-          setDisplayValue(value);
-          setIsAnimating(false);
-          clearInterval(interval);
+      const startValue = displayValue;
+      const endValue = value;
+      const startTime = performance.now();
+      const duration = 400; // ms - увеличена длительность для более плавной анимации
+
+      // Easing function для плавной анимации (easeOutCubic)
+      const easeOutCubic = (t: number): number => {
+        return 1 - Math.pow(1 - t, 3);
+      };
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeOutCubic(progress);
+        
+        const currentValue = startValue + (endValue - startValue) * easedProgress;
+        setDisplayValue(currentValue);
+
+        if (progress < 1) {
+          animationFrameRef.current = requestAnimationFrame(animate);
         } else {
-          setDisplayValue(prev => prev + stepValue);
+          setDisplayValue(endValue);
         }
-      }, stepDuration);
-      
-      return () => clearInterval(interval);
+      };
+
+      // Отменяем предыдущую анимацию если она есть
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+      };
     }
-  }, [value, displayValue]);
+  }, [value]);
+
+  // Форматируем отображаемое значение
+  const formattedValue = displayValue % 1 === 0 
+    ? Math.round(displayValue) 
+    : displayValue.toFixed(1);
 
   return (
     <div className="space-y-2">
@@ -49,11 +70,12 @@ export default function RatingSlider({ label, value, onChange, icon }: RatingSli
           {label}
         </Label>
         <span 
-          className={`text-lg font-semibold text-primary transition-all duration-200 ${
-            isAnimating ? 'scale-110' : 'scale-100'
-          }`}
+          className="text-lg font-semibold text-primary transition-transform duration-150 ease-out"
+          style={{
+            transform: displayValue !== value ? 'scale(1.15)' : 'scale(1)',
+          }}
         >
-          {Math.round(displayValue)}
+          {formattedValue}
         </span>
       </div>
       <div className="relative">
@@ -65,7 +87,7 @@ export default function RatingSlider({ label, value, onChange, icon }: RatingSli
           className="w-full"
         />
         <div 
-          className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-200 ease-out"
+          className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-300 ease-out"
           style={{
             width: `${(value / 10) * 100}%`,
             background: 'linear-gradient(90deg, rgba(147, 51, 234, 0.15) 0%, rgba(147, 51, 234, 0.05) 100%)',
