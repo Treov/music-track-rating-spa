@@ -21,7 +21,7 @@ export interface Track {
   vocals: number;
   production: number;
   lyrics: number;
-  originality: number;
+  quality: number;
   vibe: number;
   notes: string | null;
   createdAt: string;
@@ -36,7 +36,7 @@ export interface TrackFormData {
   vocals: number;
   production: number;
   lyrics: number;
-  originality: number;
+  quality: number;
   vibe: number;
   notes?: string;
 }

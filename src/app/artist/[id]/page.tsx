@@ -39,7 +39,7 @@ export default function ArtistPage() {
     vocals: 5,
     production: 5,
     lyrics: 5,
-    originality: 5,
+    quality: 5,
     vibe: 5,
     notes: "",
   });
@@ -127,10 +127,7 @@ export default function ArtistPage() {
       return;
     }
 
-    if (!audioFile && !formData.audioUrl) {
-      toast.error("Загрузите MP3-файл или укажите URL");
-      return;
-    }
+    // Audio file is now optional - removed validation
 
     setSubmitting(true);
     
@@ -155,7 +152,7 @@ export default function ArtistPage() {
           vocals: formData.vocals,
           production: formData.production,
           lyrics: formData.lyrics,
-          originality: formData.originality,
+          quality: formData.quality,
           vibe: formData.vibe,
           notes: formData.notes || null,
         }),
@@ -193,7 +190,7 @@ export default function ArtistPage() {
         vocals: 5,
         production: 5,
         lyrics: 5,
-        originality: 5,
+        quality: 5,
         vibe: 5,
         notes: "",
       });
@@ -229,7 +226,7 @@ export default function ArtistPage() {
     if (tracks.length === 0) return 0;
     
     const totalRating = tracks.reduce((sum, track) => {
-      return sum + (track.vocals + track.production + track.lyrics + track.originality + track.vibe) / 5;
+      return sum + (track.vocals + track.production + track.lyrics + track.quality + track.vibe) / 5;
     }, 0);
     
     return (totalRating / tracks.length).toFixed(1);
@@ -241,14 +238,14 @@ export default function ArtistPage() {
     const avgVocals = tracks.reduce((sum, t) => sum + t.vocals, 0) / tracks.length;
     const avgProduction = tracks.reduce((sum, t) => sum + t.production, 0) / tracks.length;
     const avgLyrics = tracks.reduce((sum, t) => sum + t.lyrics, 0) / tracks.length;
-    const avgOriginality = tracks.reduce((sum, t) => sum + t.originality, 0) / tracks.length;
+    const avgQuality = tracks.reduce((sum, t) => sum + t.quality, 0) / tracks.length;
     const avgVibe = tracks.reduce((sum, t) => sum + t.vibe, 0) / tracks.length;
 
     return [
       { category: "Вокал", value: avgVocals, fullMark: 10 },
       { category: "Продакшн", value: avgProduction, fullMark: 10 },
       { category: "Текст", value: avgLyrics, fullMark: 10 },
-      { category: "Оригинальность", value: avgOriginality, fullMark: 10 },
+      { category: "Качество", value: avgQuality, fullMark: 10 },
       { category: "Вайб", value: avgVibe, fullMark: 10 },
     ];
   };
@@ -386,7 +383,7 @@ export default function ArtistPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <Label>Аудиофайл *</Label>
+                  <Label>Аудиофайл (необязательно)</Label>
                   
                   <div className="space-y-2">
                     <Label htmlFor="audioUrl" className="text-sm font-normal">URL аудиофайла</Label>
@@ -452,9 +449,9 @@ export default function ArtistPage() {
                   />
                   
                   <RatingSlider
-                    label="Оригинальность"
-                    value={formData.originality}
-                    onChange={(value) => setFormData({ ...formData, originality: value })}
+                    label="Качественность"
+                    value={formData.quality}
+                    onChange={(value) => setFormData({ ...formData, quality: value })}
                     icon={<Sparkles className="w-4 h-4" />}
                   />
                   

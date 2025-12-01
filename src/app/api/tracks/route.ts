@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         vocals: tracks.vocals,
         production: tracks.production,
         lyrics: tracks.lyrics,
-        originality: tracks.originality,
+        quality: tracks.quality,
         vibe: tracks.vibe,
         notes: tracks.notes,
         createdAt: tracks.createdAt,
@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
       vocals,
       production,
       lyrics,
-      originality,
+      quality,
+      originality, // Support legacy field name
       vibe,
       notes,
     } = body;
@@ -86,11 +87,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Support both 'quality' and legacy 'originality' field names
+    const qualityValue = quality !== undefined ? quality : originality;
+
     const ratingFields = [
       { name: 'vocals', value: vocals },
       { name: 'production', value: production },
       { name: 'lyrics', value: lyrics },
-      { name: 'originality', value: originality },
+      { name: 'quality', value: qualityValue },
       { name: 'vibe', value: vibe },
     ];
 
@@ -162,7 +166,7 @@ export async function POST(request: NextRequest) {
         vocals,
         production,
         lyrics,
-        originality,
+        quality: qualityValue,
         vibe,
         notes: notes || null,
         createdAt: now,

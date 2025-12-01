@@ -19,7 +19,7 @@ export const tracks = sqliteTable('tracks', {
   vocals: integer('vocals').notNull(),
   production: integer('production').notNull(),
   lyrics: integer('lyrics').notNull(),
-  originality: integer('originality').notNull(),
+  quality: integer('quality').notNull(),
   vibe: integer('vibe').notNull(),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),

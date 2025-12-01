@@ -102,7 +102,7 @@ export default function GlobalMusicSearch({ onTrackAdded, currentUser }: GlobalM
         );
         
         if (existingArtist) {
-          artistId = existingArtist.id;
+          artistId = Number(existingArtist.id);
         } else {
           // Create new artist
           const createArtistResponse = await fetch("/api/artists", {
@@ -119,10 +119,15 @@ export default function GlobalMusicSearch({ onTrackAdded, currentUser }: GlobalM
           }
           
           const newArtist = await createArtistResponse.json();
-          artistId = newArtist.id;
+          artistId = Number(newArtist.id);
         }
       } else {
         throw new Error("Ошибка проверки артиста");
+      }
+
+      // Ensure artistId is a valid number
+      if (!artistId || !Number.isInteger(artistId)) {
+        throw new Error("Не удалось получить ID артиста");
       }
 
       // Step 2: Create track
@@ -131,13 +136,13 @@ export default function GlobalMusicSearch({ onTrackAdded, currentUser }: GlobalM
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: track.title,
-          artistId,
+          artistId: artistId,
           albumArt: track.artworkUrl || null,
           audioUrl: track.previewUrl || track.streamUrl || null,
           vocals: 5,
           production: 5,
           lyrics: 5,
-          originality: 5,
+          quality: 5,
           vibe: 5,
           notes: `Импортировано из ${track.platform.toUpperCase()}${track.externalUrl ? `\nСсылка: ${track.externalUrl}` : ''}`,
         }),
