@@ -12,6 +12,7 @@ import RatingSlider from "@/components/RatingSlider";
 import TrackCard from "@/components/TrackCard";
 import TrackDetailDialog from "@/components/TrackDetailDialog";
 import MusicPlatformSearch from "@/components/MusicPlatformSearch";
+import { LikeButton } from "@/components/LikeButton";
 import { toast } from "sonner";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 
@@ -27,6 +28,7 @@ export default function ArtistPage() {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -53,9 +55,11 @@ export default function ArtistPage() {
         // Check if session has user data (no expiration check)
         if (session.user && session.user.id) {
           setIsAuthenticated(true);
+          setCurrentUserId(session.user.id);
         }
       } catch (error) {
         setIsAuthenticated(false);
+        setCurrentUserId(null);
       }
     }
   }, []);
@@ -102,8 +106,6 @@ export default function ArtistPage() {
   };
 
   const uploadAudioFile = async (file: File): Promise<string> => {
-    // Create a data URL from the file for now
-    // In production, you would upload to a cloud storage service
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -127,14 +129,11 @@ export default function ArtistPage() {
       return;
     }
 
-    // Audio file is now optional - removed validation
-
     setSubmitting(true);
     
     try {
       let audioUrl = formData.audioUrl;
       
-      // Upload audio file if selected
       if (audioFile) {
         setUploading(true);
         audioUrl = await uploadAudioFile(audioFile);
@@ -158,23 +157,13 @@ export default function ArtistPage() {
         }),
       });
 
-      // Better error handling
       if (!response.ok) {
         let errorMessage = "Ошибка создания трека";
         try {
-          // Clone response before reading to avoid "body stream already read" error
-          const clonedResponse = response.clone();
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          // If response is not JSON, read as text from clone
-          try {
-            const errorText = await response.text();
-            console.error("Server error (non-JSON):", errorText);
-            errorMessage = `Ошибка сервера: ${response.status}`;
-          } catch {
-            errorMessage = `Ошибка сервера: ${response.status}`;
-          }
+        } catch {
+          errorMessage = `Ошибка сервера: ${response.status}`;
         }
         throw new Error(errorMessage);
       }
@@ -196,7 +185,6 @@ export default function ArtistPage() {
       });
       setAudioFile(null);
       
-      // Reset file input
       const fileInput = document.getElementById("audioFile") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
       
@@ -305,9 +293,14 @@ export default function ArtistPage() {
                   </div>
                 )}
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-3">
                 {tracks.length} {getTracksText(tracks.length)}
               </p>
+              <LikeButton
+                entityType="artist"
+                entityId={artist.id}
+                currentUserId={currentUserId}
+              />
             </div>
             {tracks.length > 0 && (
               <div className="text-center">

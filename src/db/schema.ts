@@ -113,3 +113,37 @@ export const trackRatings = sqliteTable('track_ratings', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export const guestUsers = sqliteTable('guest_users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  displayName: text('display_name').notNull(),
+  fingerprint: text('fingerprint').notNull().unique(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const trackLikes = sqliteTable('track_likes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  trackId: integer('track_id').notNull().references(() => tracks.id),
+  userId: integer('user_id').references(() => users.id),
+  guestId: integer('guest_id').references(() => guestUsers.id),
+  createdAt: text('created_at').notNull(),
+});
+
+export const artistLikes = sqliteTable('artist_likes', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  artistId: integer('artist_id').notNull().references(() => artists.id),
+  userId: integer('user_id').references(() => users.id),
+  guestId: integer('guest_id').references(() => guestUsers.id),
+  createdAt: text('created_at').notNull(),
+});
+
+export const trackComments = sqliteTable('track_comments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  trackId: integer('track_id').notNull().references(() => tracks.id),
+  userId: integer('user_id').references(() => users.id),
+  guestId: integer('guest_id').references(() => guestUsers.id),
+  comment: text('comment').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

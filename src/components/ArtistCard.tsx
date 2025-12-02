@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
 import EditArtistDialog from "@/components/EditArtistDialog";
+import { LikeButton } from "@/components/LikeButton";
 
 interface UserData {
   id: number;
@@ -128,7 +129,7 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin, canVer
         }`}
       >
         <Link href={`/artist/${artist.slug}`} className="block">
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 mb-4">
             <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
               {artist.imageUrl ? (
                 <img
@@ -156,6 +157,15 @@ export default function ArtistCard({ artist, onDelete, onVerify, isAdmin, canVer
             </div>
           </div>
         </Link>
+
+        {/* Like Button */}
+        <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+          <LikeButton
+            entityType="artist"
+            entityId={artist.id}
+            currentUserId={currentUser?.id}
+          />
+        </div>
         
         {/* Admin Controls - Only show if user is authenticated */}
         {isAdmin && currentUser && (
