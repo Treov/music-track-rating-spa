@@ -3,6 +3,37 @@ import { db } from '@/db';
 import { artists, tracks } from '@/db/schema';
 import { eq, like, sql, desc } from 'drizzle-orm';
 
+// Transliteration map for Russian/Cyrillic to Latin
+const translitMap: Record<string, string> = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+  'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+  'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+  'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+  'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+  'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
+  'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+  'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+  'Ф': 'F', 'Х': 'H', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch',
+  'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
+};
+
+function transliterate(text: string): string {
+  return text.split('').map(char => translitMap[char] || char).join('');
+}
+
+function generateSlug(name: string): string {
+  // First transliterate Russian to Latin
+  const transliterated = transliterate(name);
+  
+  // Then create slug
+  return transliterated
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -46,8 +77,8 @@ export async function GET(request: NextRequest) {
         createdAt: artists.createdAt,
         updatedAt: artists.updatedAt,
         trackCount: sql<number>`cast(count(${tracks.id}) as integer)`,
-        avgRating: sql<number>`ROUND(CAST(AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0) AS REAL), 2)`,
-        totalRating: sql<number>`ROUND(CAST(SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0 AS REAL), 2)`,
+        avgRating: sql<number>`ROUND(CAST(AVG((${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.quality} + ${tracks.vibe}) / 5.0) AS REAL), 2)`,
+        totalRating: sql<number>`ROUND(CAST(SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.quality} + ${tracks.vibe}) / 5.0 AS REAL), 2)`,
       })
       .from(artists)
       .leftJoin(tracks, dateFilter 
@@ -65,7 +96,7 @@ export async function GET(request: NextRequest) {
     if (sortBy === 'tracks') {
       query = query.orderBy(desc(sql`cast(count(${tracks.id}) as integer)`));
     } else if (sortBy === 'rating') {
-      query = query.orderBy(desc(sql`SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.originality} + ${tracks.vibe}) / 5.0`));
+      query = query.orderBy(desc(sql`SUM(${tracks.vocals} + ${tracks.production} + ${tracks.lyrics} + ${tracks.quality} + ${tracks.vibe}) / 5.0`));
     } else {
       query = query.orderBy(desc(artists.createdAt));
     }
@@ -122,13 +153,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate slug from name
-    const slug = trimmedName
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
+    // Generate slug from name with transliteration support
+    const slug = generateSlug(trimmedName);
 
     const now = new Date().toISOString();
     const insertData = {
