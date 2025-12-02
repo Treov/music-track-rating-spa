@@ -81,15 +81,18 @@ export async function GET(request: NextRequest) {
         displayName: users.displayName,
       })
       .from(activityLogs)
-      .leftJoin(users, eq(activityLogs.userId, users.id))
-      .orderBy(desc(activityLogs.createdAt))
-      .limit(limit)
-      .offset(offset);
+      .leftJoin(users, eq(activityLogs.userId, users.id));
 
-    // Apply conditions if any
+    // Apply conditions if any (before orderBy/limit/offset)
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
+
+    // Apply ordering and pagination
+    query = query
+      .orderBy(desc(activityLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const logs = await query;
 
