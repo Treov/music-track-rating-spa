@@ -65,14 +65,14 @@ export function setGuestDisplayName(name: string): void {
   localStorage.setItem('guest_display_name', name);
 }
 
-export async function ensureGuestUser(displayName?: string): Promise<{ id: number; displayName: string } | null> {
+export async function getOrCreateGuestUser(displayName?: string): Promise<{ id: number; displayName: string; fingerprint: string }> {
   const fingerprint = getOrCreateFingerprint();
   const existingId = getGuestUserId();
   const existingName = getGuestDisplayName();
   
   // If we already have a guest user ID and name, return it
   if (existingId && existingName) {
-    return { id: existingId, displayName: existingName };
+    return { id: existingId, displayName: existingName, fingerprint };
   }
   
   try {
@@ -89,7 +89,8 @@ export async function ensureGuestUser(displayName?: string): Promise<{ id: numbe
     if (!response.ok) {
       const error = await response.json();
       if (error.code === 'DISPLAY_NAME_REQUIRED') {
-        return null; // Need to ask for display name
+        // Return a placeholder that allows tracking but requires name for comments
+        return { id: 0, displayName: '', fingerprint };
       }
       throw new Error(error.error || 'Failed to create guest user');
     }
@@ -98,11 +99,18 @@ export async function ensureGuestUser(displayName?: string): Promise<{ id: numbe
     setGuestUserId(guestUser.id);
     setGuestDisplayName(guestUser.displayName);
     
-    return { id: guestUser.id, displayName: guestUser.displayName };
+    return { id: guestUser.id, displayName: guestUser.displayName, fingerprint };
   } catch (error) {
     console.error('Error ensuring guest user:', error);
-    return null;
+    // Return a placeholder for tracking purposes
+    return { id: 0, displayName: '', fingerprint };
   }
+}
+
+export async function ensureGuestUser(displayName?: string): Promise<{ id: number; displayName: string } | null> {
+  const result = await getOrCreateGuestUser(displayName);
+  if (result.id === 0) return null;
+  return { id: result.id, displayName: result.displayName };
 }
 
 export function clearGuestUser(): void {

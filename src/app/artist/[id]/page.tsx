@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Artist, Track, TrackFormData } from "@/types";
-import { ArrowLeft, Loader2, Plus, Music, Mic2, Radio, FileText, Sparkles, Music as MusicIcon, Upload } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Music, Mic2, Radio, FileText, Sparkles, Music as MusicIcon, Upload, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import MusicPlatformSearch from "@/components/MusicPlatformSearch";
 import { LikeButton } from "@/components/LikeButton";
 import { toast } from "sonner";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
+import { trackArtistView } from "@/lib/view-tracker";
 
 export default function ArtistPage() {
   const params = useParams();
@@ -32,6 +33,7 @@ export default function ArtistPage() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [viewCount, setViewCount] = useState<number>(0);
 
   const [formData, setFormData] = useState<TrackFormData>({
     title: "",
@@ -52,7 +54,6 @@ export default function ArtistPage() {
     if (sessionData) {
       try {
         const session = JSON.parse(sessionData);
-        // Check if session has user data (no expiration check)
         if (session.user && session.user.id) {
           setIsAuthenticated(true);
           setCurrentUserId(session.user.id);
@@ -74,16 +75,46 @@ export default function ArtistPage() {
       setArtist(data);
       setTracks(data.tracks || []);
       
-      // Update formData with correct artistId after fetch
       setFormData(prev => ({
         ...prev,
         artistId: data.id
       }));
+
+      // Fetch and record view count
+      fetchAndRecordView(data.id);
     } catch (error) {
       toast.error("Ошибка загрузки артиста");
       router.push("/");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAndRecordView = async (artistId: number) => {
+    try {
+      // Get fingerprint from guestUser utility
+      const { getOrCreateGuestUser } = await import("@/lib/guest-user");
+      const guestUser = await getOrCreateGuestUser();
+
+      // Record view
+      await fetch(`/api/artists/${artistId}/views`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fingerprint: guestUser.fingerprint,
+          userId: currentUserId,
+          guestId: guestUser.id || null
+        })
+      });
+
+      // Fetch view count
+      const viewResponse = await fetch(`/api/artists/${artistId}/views`);
+      if (viewResponse.ok) {
+        const viewData = await viewResponse.json();
+        setViewCount(viewData.uniqueViews);
+      }
+    } catch (error) {
+      console.error("Error recording/fetching views:", error);
     }
   };
 
@@ -293,9 +324,15 @@ export default function ArtistPage() {
                   </div>
                 )}
               </div>
-              <p className="text-muted-foreground mb-3">
-                {tracks.length} {getTracksText(tracks.length)}
-              </p>
+              <div className="flex items-center gap-4 mb-3">
+                <p className="text-muted-foreground">
+                  {tracks.length} {getTracksText(tracks.length)}
+                </p>
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm">{viewCount} просмотров</span>
+                </div>
+              </div>
               <LikeButton
                 entityType="artist"
                 entityId={artist.id}
