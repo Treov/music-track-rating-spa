@@ -35,7 +35,7 @@ export default function ActivityLogsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   
   // Filters
-  const [actionFilter, setActionFilter] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<string>("all");
   const [userIdFilter, setUserIdFilter] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -91,7 +91,7 @@ export default function ActivityLogsPage() {
       params.append("authUser", JSON.stringify(currentUser));
       params.append("limit", "100");
       
-      if (actionFilter) params.append("action", actionFilter);
+      if (actionFilter && actionFilter !== "all") params.append("action", actionFilter);
       if (userIdFilter) params.append("userId", userIdFilter);
       if (startDate) params.append("startDate", new Date(startDate).toISOString());
       if (endDate) params.append("endDate", new Date(endDate).toISOString());
@@ -183,7 +183,7 @@ export default function ActivityLogsPage() {
                     <SelectValue placeholder="Все действия" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Все действия</SelectItem>
+                    <SelectItem value="all">Все действия</SelectItem>
                     <SelectItem value="rated_track">Оценил трек</SelectItem>
                     <SelectItem value="added_track">Добавил трек</SelectItem>
                     <SelectItem value="verified_artist">Верифицировал артиста</SelectItem>
