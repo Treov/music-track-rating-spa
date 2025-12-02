@@ -40,3 +40,20 @@ export interface TrackFormData {
   vibe: number;
   notes?: string;
 }
+
+export interface TrackRating {
+  id: number;
+  trackId: number;
+  userId: number;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  vocals: number;
+  production: number;
+  lyrics: number;
+  quality: number;
+  vibe: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -24,20 +24,20 @@ export async function GET(request: NextRequest) {
       conditions.push(
         or(
           like(users.username, `%${search}%`),
-          like(users.displayName, `%${search}%`)
+          like(users.display_name, `%${search}%`)
         )
       );
     }
     
     // Role filter
-    if (role && ['super_admin', 'admin', 'moderator'].includes(role)) {
+    if (role && ['super_admin', 'admin', 'moderator', 'evaluator'].includes(role)) {
       conditions.push(eq(users.role, role));
     }
     
     // Banned status filter
     if (bannedParam !== null) {
       const isBanned = bannedParam === 'true';
-      conditions.push(eq(users.isBanned, isBanned));
+      conditions.push(eq(users.is_banned, isBanned));
     }
     
     // Fetch users
@@ -90,16 +90,16 @@ export async function GET(request: NextRequest) {
     const formattedResults = usersResult.map(user => ({
       id: user.id,
       username: user.username,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url,
       bio: user.bio,
       role: user.role,
-      isVerified: user.isVerified,
-      isBanned: user.isBanned,
-      tracksRatedCount: user.tracksRatedCount,
-      tracksAddedCount: user.tracksAddedCount,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
+      isVerified: user.is_verified,
+      isBanned: user.is_banned,
+      tracksRatedCount: user.tracks_rated_count,
+      tracksAddedCount: user.tracks_added_count,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
       awards: awardsByUser[user.id] || [],
       permissions: null
     }));
